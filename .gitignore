@@ -1,0 +1,9 @@
+ios/LugipodTeacher.xcodeproj/
+ios/.derived/
+ios/.spm/
+ios/.build/
+xcuserdata/
+*.xcuserstate
+DerivedData/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,70 @@
+name: iOS
+
+# Builds the app and its screen-share extension for the simulator and runs the unit tests.
+# (Free on a public repo.) A real screen share needs a device: see README, "Testing".
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  XCODE_APP: /Applications/Xcode_26.6.app
+
+jobs:
+  build-test:
+    name: Build and test
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Select Xcode
+        run: sudo xcode-select -s "$XCODE_APP" && xcodebuild -version
+
+      - name: Generate Xcode project
+        run: |
+          brew install xcodegen
+          cd ios && xcodegen generate
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: ios/.spm
+          key: spm-${{ runner.os }}-${{ hashFiles('ios/project.yml') }}
+
+      - name: Pick and boot simulator
+        id: sim
+        run: |
+          UDID=$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
+          data = json.load(sys.stdin)["devices"]
+          runtimes = sorted((r for r in data if "iOS" in r), reverse=True)
+          for runtime in runtimes:
+              pads = [d for d in data[runtime] if d["name"].startswith("iPad")]
+              if pads:
+                  print(pads[0]["udid"]); break
+          ')
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID" || true
+          xcrun simctl bootstatus "$UDID" -b
+
+      - name: Build and test
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project ios/LugipodTeacher.xcodeproj -scheme LugipodTeacher \
+            -destination "id=${{ steps.sim.outputs.udid }}" \
+            -derivedDataPath ios/.derived -clonedSourcePackagesDirPath ios/.spm \
+            -skipMacroValidation -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO \
+            > test.log 2>&1 || { grep -E "error:|\*\* (BUILD|TEST)|failed" test.log | tail -80; exit 1; }
+          grep -E "Test Suite|\*\* TEST" test.log | tail -15
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: logs-${{ github.run_number }}
+          path: test.log
