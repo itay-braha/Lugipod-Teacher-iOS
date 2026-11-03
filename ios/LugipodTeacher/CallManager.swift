@@ -120,12 +120,16 @@ final class CallManager: NSObject, ObservableObject {
 
 extension CallManager: CallClientDelegate {
     func callClientDidDetectStartOfSystemBroadcast(_ callClient: CallClient) {
-        callClient.updateInputs(.set(screenVideo: .set(isEnabled: .set(true))), completion: nil)
-        DispatchQueue.main.async { self.setSharing(true) }
+        Task { @MainActor in
+            callClient.updateInputs(.set(screenVideo: .set(isEnabled: .set(true))), completion: nil)
+            self.setSharing(true)
+        }
     }
 
     func callClientDidDetectEndOfSystemBroadcast(_ callClient: CallClient) {
-        callClient.updateInputs(.set(screenVideo: .set(isEnabled: .set(false))), completion: nil)
-        DispatchQueue.main.async { self.setSharing(false) }
+        Task { @MainActor in
+            callClient.updateInputs(.set(screenVideo: .set(isEnabled: .set(false))), completion: nil)
+            self.setSharing(false)
+        }
     }
 }
