@@ -25,6 +25,11 @@ targets:
     platform: iOS
     sources:
       - path: LugipodTeacher
+        excludes:
+          - "PrivacyInfo.xcprivacy"
+      # Privacy manifest (required for App Store / TestFlight uploads).
+      - path: LugipodTeacher/PrivacyInfo.xcprivacy
+        buildPhase: resources
     configFiles:
       Debug: Config/LugipodTeacher.xcconfig
       Release: Config/LugipodTeacher.xcconfig

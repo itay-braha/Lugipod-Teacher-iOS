@@ -63,8 +63,26 @@ jobs:
             > test.log 2>&1 || { grep -E "error:|\*\* (BUILD|TEST)|failed" test.log | tail -80; exit 1; }
           grep -E "Test Suite|\*\* TEST" test.log | tail -15
 
+      # Same archive the TestFlight workflow makes, minus signing: proves the Release build
+      # embeds the screen-share extension and the privacy manifest.
+      - name: Release archive (unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project ios/LugipodTeacher.xcodeproj -scheme LugipodTeacher \
+            -configuration Release -destination "generic/platform=iOS" \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" -clonedSourcePackagesDirPath ios/.spm \
+            -skipMacroValidation -skipPackagePluginValidation CODE_SIGNING_ALLOWED=NO \
+            > archive.log 2>&1 || { grep -E "error:" archive.log | tail -40; exit 1; }
+          APP="$RUNNER_TEMP/App.xcarchive/Products/Applications/LugipodTeacher.app"
+          ls "$APP/PlugIns" | grep -q "LugipodScreenCapture.appex" || { echo "::error::extension not embedded"; exit 1; }
+          test -f "$APP/PrivacyInfo.xcprivacy" || { echo "::error::privacy manifest missing"; exit 1; }
+          echo "archive ok: extension embedded, privacy manifest present"
+
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: logs-${{ github.run_number }}
-          path: test.log
+          path: |
+            test.log
+            archive.log
