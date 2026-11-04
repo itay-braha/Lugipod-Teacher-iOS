@@ -84,6 +84,7 @@ jobs:
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             CODE_SIGN_STYLE=Automatic \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
             CURRENT_PROJECT_VERSION="$BUILD" \
             > archive.log 2>&1 || { grep -E "error:|warning: .*(sign|provision)" -A3 archive.log | head -120; exit 1; }
           grep -E "\*\* ARCHIVE" archive.log
