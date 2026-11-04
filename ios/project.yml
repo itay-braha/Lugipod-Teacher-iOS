@@ -42,7 +42,7 @@ targets:
     entitlements:
       path: LugipodTeacher/LugipodTeacher.entitlements
       properties:
-        com.apple.security.application-groups: [group.com.itaybraha.lugipod.teacher]
+        com.apple.security.application-groups: [group.com.itaybraha.lugipod]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.itaybraha.lugipod.teacher
@@ -71,7 +71,7 @@ targets:
         NSCameraUsageDescription: הצגת המצלמה שלך לתלמידים בשיעור.
         NSMicrophoneUsageDescription: כדי שהתלמידים ישמעו אותך בשיעור, גם כשאת/ה עובד/ת באפליקציה אחרת.
         LugipodBaseURL: $(LUGIPOD_BASE_URL)
-        RTCAppGroupIdentifier: group.com.itaybraha.lugipod.teacher
+        RTCAppGroupIdentifier: group.com.itaybraha.lugipod
         DailyScreenCaptureExtensionBundleIdentifier: com.itaybraha.lugipod.teacher.screen
 
   LugipodScreenCapture:
@@ -85,7 +85,7 @@ targets:
     entitlements:
       path: LugipodScreenCapture/LugipodScreenCapture.entitlements
       properties:
-        com.apple.security.application-groups: [group.com.itaybraha.lugipod.teacher]
+        com.apple.security.application-groups: [group.com.itaybraha.lugipod]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.itaybraha.lugipod.teacher.screen

@@ -50,5 +50,5 @@ the bridge/parsing logic. The first TestFlight build must be checked on a real i
 ## Releasing (needs the Apple Developer account)
 
 Add the repository secrets `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`, `APPLE_TEAM_ID`, then run the
-**TestFlight** workflow. The app group `group.com.itaybraha.lugipod.teacher` and both bundle ids
+**TestFlight** workflow. The app group `group.com.itaybraha.lugipod` and both bundle ids
 (`com.itaybraha.lugipod.teacher`, `….screen`) are created by automatic signing.
