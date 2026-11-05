@@ -63,6 +63,43 @@ jobs:
             > test.log 2>&1 || { grep -E "error:|\*\* (BUILD|TEST)|failed" test.log | tail -80; exit 1; }
           grep -E "Test Suite|\*\* TEST" test.log | tail -15
 
+      # Photographs every screen in the iPad simulator, using the DEBUG-only preview mode (sample
+      # data, no sign-in), so the design can be reviewed without a device. See PreviewMode.swift.
+      - name: Screenshots
+        if: always()
+        run: |
+          mkdir -p shots
+          APP=ios/.derived/Build/Products/Debug-iphonesimulator/LugipodTeacher.app
+          if [ ! -d "$APP" ]; then echo "no simulator build to photograph"; exit 0; fi
+          UDID=${{ steps.sim.outputs.udid }}
+          BUNDLE=com.itaybraha.lugipod.teacher
+          xcrun simctl install "$UDID" "$APP"
+          shoot() {
+            xcrun simctl terminate "$UDID" "$BUNDLE" >/dev/null 2>&1 || true
+            SIMCTL_CHILD_LUGIPOD_PREVIEW="$2" SIMCTL_CHILD_LUGIPOD_ORIENT="$3" xcrun simctl launch "$UDID" "$BUNDLE" >/dev/null
+            sleep 7
+            xcrun simctl io "$UDID" screenshot "shots/$1.png"
+          }
+          shoot 01-login login portrait
+          shoot 02-login-code login-code portrait
+          shoot 03-login-email login-email portrait
+          shoot 04-home home portrait
+          shoot 05-availability availability portrait
+          shoot 06-availability-empty availability-empty portrait
+          shoot 07-alerts alerts portrait
+          shoot 08-more more portrait
+          shoot 09-home-landscape home landscape
+          shoot 10-availability-landscape availability landscape
+          shoot 11-login-landscape login landscape
+          ls -la shots
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screens-${{ github.run_number }}
+          path: shots
+          if-no-files-found: ignore
+
       # Same archive the TestFlight workflow makes, minus signing: proves the Release build
       # embeds the screen-share extension and the privacy manifest.
       - name: Release archive (unsigned)

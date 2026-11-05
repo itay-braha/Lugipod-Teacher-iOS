@@ -63,6 +63,7 @@ struct MainTabView: View {
                 .tabItem { Label("עוד", systemImage: "ellipsis.circle.fill") }
                 .tag(AppRouter.Tab.more)
         }
+        .tint(Theme.brand600)
         .environmentObject(inbox)
         .task { await inbox.load() }
         .onChange(of: scenePhase) { _, phase in

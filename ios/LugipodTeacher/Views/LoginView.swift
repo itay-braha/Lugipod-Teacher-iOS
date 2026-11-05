@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Phone number, then the WhatsApp code. Email + password is the quiet fallback (also what the
-/// App Review account uses).
+/// App Review account uses). Same shape as the website's login: Lugi, the wordmark, one card.
 struct LoginView: View {
     @EnvironmentObject private var auth: AuthStore
 
@@ -16,87 +16,134 @@ struct LoginView: View {
     @FocusState private var focused: Bool
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                Image("Fox").resizable().scaledToFit().frame(height: 150).padding(.top, 36)
-                VStack(spacing: 6) {
-                    Text("לוגיפוד למורים").font(.largeTitle.bold())
-                    Text(step == .phone ? "הכניסו את מספר הטלפון ונשלח קוד בוואטסאפ" : "שלחנו קוד בן 6 ספרות ל-\(Phone.format(phone))")
-                        .font(.subheadline).foregroundStyle(.secondary).multilineTextAlignment(.center)
+        GeometryReader { geo in
+            ScrollView {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 24)
+                    card
+                        .frame(maxWidth: 460)
+                        .padding(.horizontal, 20)
+                    Spacer(minLength: 24)
+                    Text("© 2026 לוגיפוד · האפליקציה מיועדת למורים")
+                        .font(.heebo(12, 500)).foregroundStyle(Theme.slate400)
+                        .padding(.bottom, 14)
                 }
-
-                if let notice = auth.notice {
-                    Label(notice, systemImage: "info.circle.fill").font(.footnote).foregroundStyle(.orange)
-                }
-
-                if step == .phone { phoneStep } else { codeStep }
-
-                if let error {
-                    Text(error).font(.footnote).foregroundStyle(.red).multilineTextAlignment(.center)
-                }
-
-                Button("כניסה עם אימייל וסיסמה") { showEmail = true }
-                    .font(.footnote).padding(.top, 8)
+                .frame(maxWidth: .infinity, minHeight: geo.size.height)
             }
-            .padding(.horizontal, 24)
+            .scrollDismissesKeyboard(.interactively)
         }
-        .scrollDismissesKeyboard(.interactively)
-        .sheet(isPresented: $showEmail) { EmailLoginView().environment(\.layoutDirection, .rightToLeft) }
-        .onAppear { focused = true }
+        .background(ScreenBackground())
+        .sheet(isPresented: $showEmail) {
+            EmailLoginView().environment(\.layoutDirection, .rightToLeft)
+        }
+        .onAppear {
+            #if DEBUG
+            if PreviewMode.screen == "login-code" { step = .code; phone = "050-123-4567" }
+            if PreviewMode.screen == "login-email" { showEmail = true }
+            if PreviewMode.isOn { return }
+            #endif
+            focused = true
+        }
+    }
+
+    private var card: some View {
+        VStack(spacing: 0) {
+            Lugi(pose: .wave, height: 150).padding(.top, 4)
+            Wordmark(size: 34).padding(.top, 2)
+            Text("לוח המורים")
+                .font(.heebo(13, 700)).foregroundStyle(Theme.brand700)
+                .padding(.horizontal, 11).padding(.vertical, 3)
+                .background(Theme.brand50, in: Capsule())
+                .padding(.top, 6)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(step == .phone ? "כניסה עם וואטסאפ" : "הקלידו את הקוד")
+                    .font(.heebo(22, 800)).foregroundStyle(Theme.ink)
+                Text(step == .phone
+                     ? "נשלח קוד חד-פעמי לוואטסאפ שלכם."
+                     : "שלחנו קוד בן 6 ספרות ל-\(Phone.format(phone)).")
+                    .font(.heebo(15, 500)).foregroundStyle(Theme.slate500)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 24)
+
+            if let notice = auth.notice {
+                Label(notice, systemImage: "info.circle.fill")
+                    .font(.heebo(13, 600)).foregroundStyle(Theme.amber800)
+                    .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Theme.amber50, in: RoundedRectangle(cornerRadius: 12))
+                    .padding(.top, 14)
+            }
+
+            Group { if step == .phone { phoneStep } else { codeStep } }
+                .padding(.top, 18)
+
+            if let error {
+                Text(error)
+                    .font(.heebo(13, 600)).foregroundStyle(Theme.rose600)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 12)
+            }
+
+            Button("כניסה עם אימייל במקום") { showEmail = true }
+                .font(.heebo(14, 700)).foregroundStyle(Theme.slate600)
+                .padding(.top, 20)
+        }
+        .card(padding: 28, radius: 32)
     }
 
     private var phoneStep: some View {
-        VStack(spacing: 14) {
-            TextField("050-123-4567", text: $phone)
-                .keyboardType(.numberPad).textContentType(.telephoneNumber)
-                .font(.title2.monospacedDigit()).multilineTextAlignment(.center)
-                .environment(\.layoutDirection, .leftToRight)
-                .padding(14).background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 14))
-                .focused($focused)
-                .onChange(of: phone) { _, new in
-                    let f = Phone.format(new)
-                    if f != new { phone = f }
+        VStack(spacing: 16) {
+            LugiFieldBox(label: "מספר טלפון", focused: focused) {
+                HStack(spacing: 10) {
+                    Text("🇮🇱").font(.system(size: 22))
+                    TextField("050-123-4567", text: $phone)
+                        .keyboardType(.numberPad).textContentType(.telephoneNumber)
+                        .font(.heebo(21, 600).monospacedDigit())
+                        .environment(\.layoutDirection, .leftToRight)
+                        .multilineTextAlignment(.leading)
+                        .focused($focused)
+                        .onChange(of: phone) { _, new in
+                            let f = Phone.format(new)
+                            if f != new { phone = f }
+                        }
                 }
-            primaryButton("שלחו לי קוד", enabled: Phone.isValid(phone)) { await sendCode() }
+            }
+            Button { Task { await sendCode() } } label: {
+                HStack(spacing: 8) {
+                    if busy { ProgressView().tint(.white) }
+                    Text("שלחו לי קוד בוואטסאפ")
+                }
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .disabled(!Phone.isValid(phone) || busy)
         }
     }
 
     private var codeStep: some View {
-        VStack(spacing: 14) {
-            TextField("••••••", text: $code)
-                .keyboardType(.numberPad).textContentType(.oneTimeCode)
-                .font(.system(size: 32, weight: .semibold, design: .monospaced)).kerning(8)
-                .multilineTextAlignment(.center)
-                .environment(\.layoutDirection, .leftToRight)
-                .padding(14).background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 14))
-                .focused($focused)
+        VStack(spacing: 16) {
+            OTPBoxes(code: $code, focused: $focused)
                 .onChange(of: code) { _, new in
                     let d = String(new.filter(\.isNumber).prefix(6))
                     if d != new { code = d }
                     if d.count == 6 { Task { await verify() } }
                 }
-            primaryButton("כניסה", enabled: code.count == 6) { await verify() }
-            HStack(spacing: 18) {
+            Button { Task { await verify() } } label: {
+                HStack(spacing: 8) {
+                    if busy { ProgressView().tint(.white) }
+                    Text("כניסה")
+                }
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .disabled(code.count != 6 || busy)
+
+            HStack(spacing: 22) {
                 Button("מספר אחר") { step = .phone; code = ""; error = nil }
                 Button(cooldown > 0 ? "שליחה חוזרת (\(cooldown))" : "שליחה חוזרת") { Task { await sendCode() } }
                     .disabled(cooldown > 0 || busy)
             }
-            .font(.footnote)
+            .font(.heebo(14, 700)).foregroundStyle(Theme.brand700)
         }
-    }
-
-    private func primaryButton(_ title: String, enabled: Bool, action: @escaping () async -> Void) -> some View {
-        Button {
-            Task { await action() }
-        } label: {
-            HStack {
-                if busy { ProgressView().tint(.white) }
-                Text(title).font(.headline)
-            }
-            .frame(maxWidth: .infinity).padding(.vertical, 14)
-        }
-        .buttonStyle(.borderedProminent).controlSize(.large)
-        .disabled(!enabled || busy)
     }
 
     private func sendCode() async {
@@ -130,6 +177,42 @@ struct LoginView: View {
     }
 }
 
+/// Six digit boxes driven by one hidden text field (so the keyboard's one-time-code suggestion works).
+struct OTPBoxes: View {
+    @Binding var code: String
+    var focused: FocusState<Bool>.Binding
+
+    var body: some View {
+        ZStack {
+            TextField("", text: $code)
+                .keyboardType(.numberPad).textContentType(.oneTimeCode)
+                .focused(focused)
+                .opacity(0.02)
+                .accessibilityLabel("קוד אימות")
+            HStack(spacing: 8) {
+                ForEach(0..<6, id: \.self) { i in
+                    let chars = Array(code)
+                    let isActive = focused.wrappedValue && i == min(chars.count, 5)
+                    Text(i < chars.count ? String(chars[i]) : "")
+                        .font(.heebo(26, 700).monospacedDigit())
+                        .foregroundStyle(Theme.ink)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 60)
+                        .background(Color.white, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .strokeBorder(isActive ? Theme.brand500 : Theme.slate300, lineWidth: isActive ? 2 : 1)
+                        )
+                }
+            }
+            .allowsHitTesting(false)
+        }
+        .environment(\.layoutDirection, .leftToRight)
+        .contentShape(Rectangle())
+        .onTapGesture { focused.wrappedValue = true }
+    }
+}
+
 struct EmailLoginView: View {
     @EnvironmentObject private var auth: AuthStore
     @Environment(\.dismiss) private var dismiss
@@ -137,31 +220,55 @@ struct EmailLoginView: View {
     @State private var password = ""
     @State private var busy = false
     @State private var error: String?
+    @FocusState private var field: Field?
+    private enum Field { case email, password }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField("אימייל", text: $email)
-                        .keyboardType(.emailAddress).textContentType(.username)
-                        .textInputAutocapitalization(.never).autocorrectionDisabled()
-                        .environment(\.layoutDirection, .leftToRight)
-                    SecureField("סיסמה", text: $password).textContentType(.password)
-                        .environment(\.layoutDirection, .leftToRight)
-                }
-                if let error { Section { Text(error).foregroundStyle(.red).font(.footnote) } }
-                Section {
-                    Button {
-                        Task { await submit() }
-                    } label: {
-                        HStack { if busy { ProgressView() }; Text("כניסה").bold() }.frame(maxWidth: .infinity)
+        ZStack {
+            ScreenBackground()
+            ScrollView {
+                VStack(spacing: 18) {
+                    HStack {
+                        Text("כניסה עם אימייל").font(.heebo(24, 800)).foregroundStyle(Theme.ink)
+                        Spacer()
+                        Button("סגירה") { dismiss() }.buttonStyle(SoftButtonStyle(fg: Theme.slate600, bg: Theme.slate100))
                     }
-                    .disabled(busy || email.isEmpty || password.isEmpty)
+                    VStack(spacing: 16) {
+                        LugiFieldBox(label: "אימייל", focused: field == .email) {
+                            TextField("name@example.com", text: $email)
+                                .keyboardType(.emailAddress).textContentType(.username)
+                                .textInputAutocapitalization(.never).autocorrectionDisabled()
+                                .font(.heebo(17, 500))
+                                .environment(\.layoutDirection, .leftToRight)
+                                .focused($field, equals: .email)
+                        }
+                        LugiFieldBox(label: "סיסמה", focused: field == .password) {
+                            SecureField("••••••••", text: $password)
+                                .textContentType(.password)
+                                .font(.heebo(17, 500))
+                                .environment(\.layoutDirection, .leftToRight)
+                                .focused($field, equals: .password)
+                        }
+                        if let error {
+                            Text(error).font(.heebo(13, 600)).foregroundStyle(Theme.rose600)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        Button { Task { await submit() } } label: {
+                            HStack(spacing: 8) {
+                                if busy { ProgressView().tint(.white) }
+                                Text("כניסה")
+                            }
+                        }
+                        .buttonStyle(PrimaryButtonStyle())
+                        .disabled(busy || email.isEmpty || password.isEmpty)
+                    }
+                    .card(padding: 24, radius: 28)
                 }
+                .frame(maxWidth: 460)
+                .padding(20)
+                .frame(maxWidth: .infinity)
             }
-            .navigationTitle("כניסה עם אימייל")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("ביטול") { dismiss() } } }
+            .scrollDismissesKeyboard(.interactively)
         }
     }
 

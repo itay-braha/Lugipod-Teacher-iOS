@@ -7,6 +7,8 @@ struct LugipodTeacherApp: App {
     @StateObject private var call = CallManager()
     @StateObject private var router = AppRouter()
 
+    init() { AppAppearance.configure() }
+
     var body: some Scene {
         WindowGroup {
             RootView()
@@ -15,6 +17,8 @@ struct LugipodTeacherApp: App {
                 .environmentObject(router)
                 .environment(\.layoutDirection, .rightToLeft)
                 .environment(\.locale, Locale(identifier: "he_IL"))
+                .preferredColorScheme(.light)
+                .tint(Theme.brand600)
                 .onAppear { PushNotifications.shared.router = router }
         }
     }

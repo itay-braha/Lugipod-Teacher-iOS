@@ -14,6 +14,12 @@ final class AppRouter: ObservableObject {
     @Published var tab: Tab = .home
     @Published var web: WebTarget?
 
+    init() {
+        #if DEBUG
+        if let preview = PreviewMode.tab() { tab = preview }
+        #endif
+    }
+
     func open(path: String) {
         switch Self.destination(for: path) {
         case .tab(let t): tab = t

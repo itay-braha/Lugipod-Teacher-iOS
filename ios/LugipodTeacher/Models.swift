@@ -59,6 +59,37 @@ enum HebrewDate {
         return f
     }()
 
+    private static func format(_ pattern: String, _ d: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "he_IL")
+        f.dateFormat = pattern
+        return f.string(from: d)
+    }
+
+    /// "רביעי" (no "יום" prefix).
+    static func weekday(_ d: Date) -> String {
+        let full = format("EEEE", d)
+        return full.hasPrefix("יום ") ? String(full.dropFirst(4)) : full
+    }
+
+    static func dayNumber(_ d: Date) -> String { format("d", d) }
+    static func time(_ d: Date) -> String { format("HH:mm", d) }
+
+    /// "יום רביעי, 5 בנובמבר"
+    static func longDay(_ d: Date) -> String { format("EEEE, d בMMMM", d) }
+
+    /// "17:30–19:00"
+    static func timeRange(_ start: Date, minutes: Int) -> String {
+        "\(time(start))–\(time(start.addingTimeInterval(Double(minutes) * 60)))"
+    }
+
+    /// "היום", "מחר", or the weekday and date.
+    static func dayLabel(_ d: Date) -> String {
+        if Calendar.current.isDateInToday(d) { return "היום" }
+        if Calendar.current.isDateInTomorrow(d) { return "מחר" }
+        return format("EEEE, d בMMMM", d)
+    }
+
     static func lessonText(_ d: Date) -> String {
         Calendar.current.isDateInToday(d) ? "היום · \(time.string(from: d))"
             : Calendar.current.isDateInTomorrow(d) ? "מחר · \(time.string(from: d))"

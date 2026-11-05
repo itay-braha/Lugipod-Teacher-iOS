@@ -17,6 +17,12 @@ final class AuthStore: ObservableObject {
 
     private init() {
         client = SupabaseClient(supabaseURL: AppConfig.supabaseURL, supabaseKey: AppConfig.supabaseKey)
+        #if DEBUG
+        if PreviewMode.isOn {
+            state = PreviewMode.loggedOut ? .signedOut : .signedIn
+            return
+        }
+        #endif
         guard AppConfig.isConfigured else {
             state = .notConfigured
             return

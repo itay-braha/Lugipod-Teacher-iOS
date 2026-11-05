@@ -29,9 +29,11 @@ struct WebScreen: View {
                         dismiss()
                     } label: {
                         Label("סגירה", systemImage: "xmark")
-                            .font(.footnote.weight(.semibold))
-                            .padding(.horizontal, 12).padding(.vertical, 8)
-                            .background(.regularMaterial, in: Capsule())
+                            .font(.heebo(14, 800)).foregroundStyle(Theme.ink)
+                            .padding(.horizontal, 16).padding(.vertical, 10)
+                            .background(Color.white, in: Capsule())
+                            .overlay(Capsule().strokeBorder(Theme.slate200, lineWidth: 1))
+                            .shadow(color: Theme.shadowSoft2, radius: 8, y: 3)
                     }
                     Spacer()
                 }

@@ -9,6 +9,8 @@ enum Week {
     static let firstRow = 18
     static let lastRow = 43
     static let rows = Array(firstRow...lastRow)
+    /// One lesson is 90 minutes = 3 half-hour slots in a row.
+    static let sessionSlots = 3
     static let dayNames = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"]
 
     static func slot(day: Int, row: Int) -> Int { day * slotsPerDay + row }
@@ -78,6 +80,69 @@ final class AvailabilityModel: ObservableObject {
     /// Preferred hours can only be picked from the available ones.
     func isEditable(_ slot: Int) -> Bool {
         mode == .available || available.contains(slot)
+    }
+
+    /// A tap, as on the website: an empty half-hour fills out to a whole 90-minute lesson block
+    /// (forward first, then backward, through editable hours only); a filled one clears just itself.
+    func tap(_ slot: Int) {
+        guard isEditable(slot) else { return }
+        if isSet(slot) { set(slot, on: false); return }
+
+        let day = Week.day(of: slot), row = Week.row(of: slot)
+        func has(_ r: Int) -> Bool { isSet(Week.slot(day: day, row: r)) }
+        func usable(_ r: Int) -> Bool {
+            r >= Week.firstRow && r <= Week.lastRow && isEditable(Week.slot(day: day, row: r))
+        }
+        var lo = row, hi = row
+        while has(lo - 1) { lo -= 1 }
+        while has(hi + 1) { hi += 1 }
+        var added = [slot]
+        while hi - lo + 1 < Week.sessionSlots, usable(hi + 1), !has(hi + 1) {
+            hi += 1; added.append(Week.slot(day: day, row: hi))
+        }
+        while hi - lo + 1 < Week.sessionSlots, usable(lo - 1), !has(lo - 1) {
+            lo -= 1; added.append(Week.slot(day: day, row: lo))
+        }
+        for s in added { set(s, on: true) }
+    }
+
+    /// Runs shorter than a lesson (marked amber) and the empty slots that would complete them
+    /// (suggested, dashed), for the layer being edited.
+    func analysis() -> (incomplete: Set<Int>, suggested: Set<Int>) {
+        let current = mode == .available ? available : preferred
+        var incomplete = Set<Int>(), suggested = Set<Int>()
+        for day in 0..<Week.days {
+            let rows = Week.rows.filter { current.contains(Week.slot(day: day, row: $0)) }
+            var i = 0
+            while i < rows.count {
+                var j = i
+                while j + 1 < rows.count, rows[j + 1] == rows[j] + 1 { j += 1 }
+                let length = j - i + 1
+                if length < Week.sessionSlots {
+                    for r in rows[i]...rows[j] { incomplete.insert(Week.slot(day: day, row: r)) }
+                    var need = Week.sessionSlots - length
+                    var r = rows[j] + 1
+                    while need > 0, r <= Week.lastRow {
+                        let s = Week.slot(day: day, row: r)
+                        if current.contains(s) || !isEditable(s) { break }
+                        suggested.insert(s); need -= 1; r += 1
+                    }
+                    r = rows[i] - 1
+                    while need > 0, r >= Week.firstRow {
+                        let s = Week.slot(day: day, row: r)
+                        if current.contains(s) || !isEditable(s) { break }
+                        suggested.insert(s); need -= 1; r -= 1
+                    }
+                }
+                i = j + 1
+            }
+        }
+        return (incomplete, suggested)
+    }
+
+    func hours(onDay day: Int) -> Double {
+        let current = mode == .available ? available : preferred
+        return Double(current.filter { Week.day(of: $0) == day }.count) / 2
     }
 
     func set(_ slot: Int, on: Bool) {

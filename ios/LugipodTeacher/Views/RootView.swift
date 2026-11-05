@@ -8,7 +8,7 @@ struct RootView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             switch auth.state {
-            case .loading: ProgressView()
+            case .loading: LoadingView()
             case .notConfigured: SetupMissingView()
             case .signedOut: LoginView()
             case .signedIn: MainTabView()
@@ -20,20 +20,47 @@ struct RootView: View {
                 .environment(\.layoutDirection, .rightToLeft)
         }
         .task(id: auth.state) {
+            #if DEBUG
+            if PreviewMode.isOn {
+                if PreviewMode.wantsLandscape { Self.rotateToLandscape() }
+                return
+            }
+            #endif
             guard auth.state == .signedIn else { return }
             await PushNotifications.shared.requestAuthorizationAndRegister()
             await PushNotifications.shared.uploadIfPossible()
+        }
+    }
+
+    #if DEBUG
+    private static func rotateToLandscape() {
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene else { return }
+        scene.requestGeometryUpdate(.iOS(interfaceOrientations: .landscapeLeft))
+    }
+    #endif
+}
+
+struct LoadingView: View {
+    var body: some View {
+        ZStack {
+            ScreenBackground()
+            VStack(spacing: 16) {
+                Lugi(pose: .walk, height: 130)
+                Wordmark(size: 28)
+                ProgressView()
+            }
         }
     }
 }
 
 struct SetupMissingView: View {
     var body: some View {
-        ContentUnavailableView(
-            "האפליקציה לא הוגדרה",
-            systemImage: "wrench.and.screwdriver",
-            description: Text("חסרים פרטי החיבור לשרת (Secrets.xcconfig). ראו את ה-README.")
-        )
+        ZStack {
+            ScreenBackground()
+            EmptyState(pose: .peek, title: "האפליקציה לא הוגדרה",
+                       message: "חסרים פרטי החיבור לשרת (Secrets.xcconfig). ראו את ה-README.")
+                .frame(maxWidth: 460).padding(20)
+        }
     }
 }
 
@@ -44,28 +71,32 @@ struct CallBar: View {
     var body: some View {
         HStack(spacing: 12) {
             Circle().fill(dot).frame(width: 10, height: 10)
-            Text(label).font(.footnote.weight(.bold))
+            Text(label).font(.heebo(14, 800)).foregroundStyle(Theme.ink)
             if call.sharing, let stats = call.shareStats {
-                Text(stats).font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
+                Text(stats).font(.heebo(12, 600).monospacedDigit()).foregroundStyle(Theme.slate500)
             }
             if call.phase == .live {
                 Button { call.setMic(!call.micOn) } label: {
                     Image(systemName: call.micOn ? "mic.fill" : "mic.slash.fill")
-                        .foregroundStyle(call.micOn ? Color.primary : Color.red)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(call.micOn ? Theme.brand700 : .white)
+                        .frame(width: 34, height: 34)
+                        .background(call.micOn ? Theme.brand50 : Theme.rose500, in: Circle())
                 }
                 .accessibilityLabel(call.micOn ? "השתקה" : "ביטול השתקה")
             }
         }
-        .padding(.horizontal, 16).padding(.vertical, 10)
-        .background(.regularMaterial, in: Capsule())
-        .shadow(radius: 6, y: 2)
+        .padding(.leading, 18).padding(.trailing, 10).padding(.vertical, 8)
+        .background(Color.white, in: Capsule())
+        .overlay(Capsule().strokeBorder(Theme.slate200, lineWidth: 1))
+        .shadow(color: Theme.shadowSoft2, radius: 10, y: 4)
     }
 
     private var dot: Color {
         switch call.phase {
-        case .live: return call.sharing ? .red : .green
-        case .joining: return .orange
-        default: return .gray
+        case .live: return call.sharing ? Theme.rose500 : Theme.emerald500
+        case .joining: return Theme.amber500
+        default: return Theme.slate400
         }
     }
 

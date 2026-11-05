@@ -113,11 +113,57 @@ final class AvailabilityModelTests: XCTestCase {
         XCTAssertTrue(m.available.isEmpty)
     }
 
+    func testTapFillsALessonBlockAndASecondTapClearsOneSlot() {
+        let m = AvailabilityModel()
+        let s = Week.slot(day: 1, row: 32)
+        m.tap(s)
+        XCTAssertEqual(m.available, [s, s + 1, s + 2])
+        XCTAssertTrue(m.analysis().incomplete.isEmpty)
+
+        m.tap(s + 1)                              // clear the middle one: two lone slots are not lessons
+        XCTAssertEqual(m.available, [s, s + 2])
+        XCTAssertEqual(m.analysis().incomplete, [s, s + 2])
+    }
+
+    func testTapAtTheEndOfTheWindowFillsBackward() {
+        let m = AvailabilityModel()
+        m.tap(Week.slot(day: 4, row: Week.lastRow))
+        XCTAssertEqual(m.available.count, 3)
+        XCTAssertTrue(m.available.contains(Week.slot(day: 4, row: Week.lastRow - 2)))
+    }
+
+    func testPreferredCanOnlyBePickedInsideAvailable() {
+        let m = AvailabilityModel()
+        m.tap(Week.slot(day: 2, row: 34))
+        m.mode = .preferred
+        m.tap(Week.slot(day: 3, row: 34))         // not available: nothing happens
+        XCTAssertTrue(m.preferred.isEmpty)
+        m.tap(Week.slot(day: 2, row: 34))
+        XCTAssertEqual(m.preferred.count, 3)
+    }
+
     func testAvailabilityResponseDecodes() throws {
         let json = #"{"available":[114,115],"preferred":[114],"hot":[{"slot":120,"weight":6}]}"#.data(using: .utf8)!
         let r = try API.decoder.decode(AvailabilityResponse.self, from: json)
         XCTAssertEqual(r.available, [114, 115])
         XCTAssertEqual(r.hot, [HotSlot(slot: 120, weight: 6)])
+    }
+}
+
+final class DesignSystemTests: XCTestCase {
+    func testHeeboLoadsAndHonoursTheWeight() {
+        XCTAssertTrue(Heebo.isAvailable, "Heebo.ttf is not registered (UIAppFonts)")
+        XCTAssertEqual(Heebo.uiFont(20, 800).familyName, "Heebo")
+    }
+
+    func testBrandColorsMatchTheWebsite() {
+        XCTAssertEqual(UIColor(Theme.brand600).cgColor.components?.prefix(3).map { Int(($0 * 255).rounded()) }, [79, 70, 229])
+    }
+
+    func testHebrewDateHelpers() {
+        let d = Date(timeIntervalSince1970: 1_793_000_000)
+        XCTAssertFalse(HebrewDate.weekday(d).hasPrefix("יום"))
+        XCTAssertEqual(HebrewDate.timeRange(d, minutes: 90).split(separator: "–").count, 2)
     }
 }
 

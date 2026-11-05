@@ -46,6 +46,9 @@ enum API {
     }
 
     static func request(_ method: String, _ path: String, json: [String: Any]? = nil, authorized: Bool = true) async throws -> Data {
+        #if DEBUG
+        if PreviewMode.isOn { return PreviewMode.response(method: method, path: path) }
+        #endif
         guard let url = URL(string: path, relativeTo: baseURL) else { throw APIError.badURL }
         var req = URLRequest(url: url)
         req.httpMethod = method
