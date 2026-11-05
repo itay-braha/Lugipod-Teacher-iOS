@@ -19,6 +19,9 @@ struct LessonItem: Decodable, Identifiable, Equatable {
     let scheduledAt: Date
     let durationMin: Int
     let phase: LessonPhase
+    /// The group and how many weekly lessons it has (0232); older servers omit both.
+    var groupId: String? = nil
+    var weekly: Int? = nil
 }
 
 struct SummaryDue: Decodable, Identifiable, Equatable {

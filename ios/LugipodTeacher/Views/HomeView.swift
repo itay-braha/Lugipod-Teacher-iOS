@@ -162,6 +162,19 @@ struct HomeView: View {
         return order.map { DayGroup(label: $0, lessons: byDay[$0] ?? []) }
     }
 
+    /// For a group that meets several times a week: its next lesson that has not ended (the list is
+    /// already in time order), so "which one is next" is never a guess.
+    private var nextWeeklyIds: Set<String> {
+        var seen = Set<String>()
+        var ids = Set<String>()
+        for l in model.data?.lessons ?? [] where l.phase != .ended && (l.weekly ?? 1) > 1 {
+            guard let g = l.groupId, !seen.contains(g) else { continue }
+            seen.insert(g)
+            ids.insert(l.id)
+        }
+        return ids
+    }
+
     @ViewBuilder private var lessonsSection: some View {
         if let lessons = model.data?.lessons {
             if lessons.isEmpty {
@@ -173,6 +186,7 @@ struct HomeView: View {
                         SectionTitle(text: group.label)
                         ForEach(group.lessons) { lesson in
                             LessonCard(lesson: lesson,
+                                       isNext: nextWeeklyIds.contains(lesson.id),
                                        join: { router.open(path: "/meeting/lesson/\(lesson.id)") },
                                        open: { detail = lesson })
                         }
@@ -196,6 +210,7 @@ struct HomeView: View {
 
 struct LessonCard: View {
     let lesson: LessonItem
+    var isNext: Bool = false
     let join: () -> Void
     let open: () -> Void
 
@@ -211,6 +226,9 @@ struct LessonCard: View {
                     HStack(spacing: 14) {
                         Label(HebrewDate.timeRange(lesson.scheduledAt, minutes: lesson.durationMin), systemImage: "clock")
                         Label("\(lesson.students) תלמידים", systemImage: "person.2.fill")
+                        if let w = lesson.weekly, w > 1 {
+                            Label("\(w) מפגשים בשבוע", systemImage: "repeat")
+                        }
                     }
                     .font(.heebo(14, 600)).foregroundStyle(Theme.slate500)
                     .labelStyle(.titleAndIcon)
@@ -256,7 +274,10 @@ struct LessonCard: View {
             Label("הסתיים", systemImage: "checkmark.circle.fill")
                 .font(.heebo(13, 700)).foregroundStyle(Theme.slate500)
         } else {
-            Pill(text: HebrewDate.relative(lesson.scheduledAt))
+            VStack(alignment: .trailing, spacing: 6) {
+                if isNext { Pill(text: "הבא", icon: "arrow.right.circle.fill", fg: Theme.amber800, bg: Theme.amber100) }
+                Pill(text: HebrewDate.relative(lesson.scheduledAt))
+            }
         }
     }
 }
