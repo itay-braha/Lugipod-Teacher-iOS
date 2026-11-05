@@ -1,6 +1,6 @@
 name: TestFlight
 
-# Manual only: archives a Release build (app + screen-share extension), signs it in the
+# Manual, plus a scheduled refresh every other month: archives a Release build (app + screen-share extension), signs it in the
 # cloud with the App Store Connect API key, and uploads it to TestFlight.
 #
 # Repository secrets (Settings > Secrets and variables > Actions):
@@ -8,6 +8,9 @@ name: TestFlight
 #   APPLE_TEAM_ID                           10-character team ID
 on:
   workflow_dispatch:
+  # TestFlight builds expire after 90 days: a fresh one on the 1st of every other month keeps the app alive.
+  schedule:
+    - cron: "0 6 1 */2 *"
 
 concurrency:
   group: testflight

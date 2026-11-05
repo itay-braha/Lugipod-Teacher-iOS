@@ -1,54 +1,53 @@
-# לוגיפוד למורים — Lugipod Teacher (iPad)
+# לוגיפוד למורים — Lugipod Teacher (iPad / iPhone)
 
-A thin native iPad/iPhone app for Lugipod teachers. It exists for one reason: an iPad browser
-cannot share the screen (WebKit has no `getDisplayMedia`) and cannot keep the microphone alive
-while another app (Notability) is in front. This app can, so a teacher can teach from Notability
-and still be heard and seen by the students inside the Lugipod lesson.
+A native SwiftUI app for Lugipod **teachers** (teachers only; not the general Lugipod app).
 
-It is a shell around the Lugipod site (`https://lugipod.com/teacher`, same login, same pages),
-plus a native Daily call client. It will later be folded into the full Lugipod app.
+- **Home**: the week's lessons with a live phase and a join button, and the lesson summaries still owed.
+- **Alerts**: the bell, natively, plus **push notifications** for every new alert.
+- **Lesson room + screen share**: an iPad browser cannot share the screen or keep the microphone alive
+  with Notability in front. The room page runs inside the app, and a native Daily client carries the
+  teacher's voice (background audio) and the system screen share (broadcast extension).
+- **More**: the screens not ported yet (full board, availability, economy, vault, SOS) open the Lugipod
+  website inside the app, signed in with the app's own session.
 
-## How it works
+Architecture, API and push setup live in the Lugipod repo: `docs/IOS_TEACHER_APP.md`.
+
+## How it fits together
 
 ```
- WKWebView (lugipod.com)                         native
- ───────────────────────                         ──────
- /meeting/lesson/<id>   ── startCall ──────────► CallManager
-   (joins Daily MUTED,                            POST /api/meeting/native-join
-    heartbeat, files, end)                        joins the room as "<name> · iPad":
-                                                    mic ON (works in the background)
- "שיתוף מסך" button     ── startShare ─────────►  ShareLauncher → iOS broadcast sheet
-                                                   → LugipodScreenCapture extension
-                                                   → Daily (DailySystemBroadcast) → room
- share button state     ◄── lugipod-native event ─ CallManager
+ SwiftUI (native)                          Lugipod backend (Next.js on Vercel)
+ ────────────────                          ───────────────────────────────────
+ LoginView  ── phone ───────────────────►  POST /api/native/otp-request  (WhatsApp code)
+            ── code  ──► Supabase Auth (SDK verifies, session in the Keychain)
+ HomeView   ── Bearer ──────────────────►  GET  /api/native/home
+ AlertsView ── Bearer ──────────────────►  GET/POST /api/native/alerts
+ Push       ── token ───────────────────►  POST/DELETE /api/native/push   ◄── pg_cron → APNs
+ WebScreen  ── session form post ───────►  POST /api/native/web-login  (cookies for the web pages)
+ Lesson room (web page in WebScreen) ◄─ bridge ─► CallManager (native Daily client + screen share)
+                                           POST /api/meeting/native-join, /api/meeting/state
 ```
 
-* The page detects the app by the `LugipodTeacherApp` user-agent suffix and the
-  `webkit.messageHandlers.lugipod` bridge (`src/components/meeting/MeetingRoom.tsx` in the
-  Lugipod repo).
-* The app never sees credentials: it replays the web view's cookies to `/api/meeting/native-join`
-  and `/api/meeting/state` (a presence heartbeat the app keeps going while the web view sleeps).
-* The page's own Daily frame is silenced inside the app (a script in `WebShell.swift`) so the
-  students are not heard twice (native plays them).
+## Build and test
 
-## Build
+CI (`.github/workflows/ios.yml`, free on a public repo) generates the project with XcodeGen, builds and
+runs the unit tests on an iPad simulator, and checks that an unsigned Release archive embeds the
+screen-share extension and the privacy manifest. Locally (Mac): `cd ios && xcodegen && open LugipodTeacher.xcodeproj`.
 
-CI (`.github/workflows/ios.yml`) generates the project with XcodeGen and builds + runs the unit
-tests on an iPad simulator. Locally (Mac): `cd ios && xcodegen && open LugipodTeacher.xcodeproj`.
+The Supabase connection (public host + publishable key) comes from `ios/Config/Secrets.xcconfig`
+(git-ignored; see `Secrets.example.xcconfig`). The TestFlight workflow writes it from the repository
+secrets `SUPABASE_PROJECT_HOST` and `SUPABASE_PUBLISHABLE_KEY`. Without it the app shows a setup screen.
 
-## Testing
+The simulator cannot run a system broadcast, the microphone, or APNs, so those need a real iPad:
 
-The simulator cannot run a system screen broadcast or the microphone, so CI covers the build and
-the bridge/parsing logic. The first TestFlight build must be checked on a real iPad:
-
-1. Open the app, sign in as the teacher, open a lesson room, tap "השתתפות".
-2. The bar at the bottom shows "בשיחה"; students hear the teacher.
-3. Tap "שיתוף מסך", pick **שיתוף מסך** in the iOS sheet, Start Broadcast.
-4. Switch to Notability: students keep seeing the screen and hearing the voice.
-5. Check no echo or double audio on the teacher's side and no duplicate voice on the students'.
+1. Sign in, allow notifications.
+2. Open a live lesson, join. The bar at the bottom shows "בשיחה"; students hear the teacher.
+3. Tap "שיתוף מסך" in the room, pick **שיתוף מסך**, Start Broadcast; switch to Notability.
+4. Check no echo or double audio on either side.
+5. With the lesson closed, create an alert (for example finish a lesson) and check the push arrives.
 
 ## Releasing (needs the Apple Developer account)
 
-Add the repository secrets `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`, `APPLE_TEAM_ID`, then run the
-**TestFlight** workflow. The app group `group.com.itaybraha.lugipod` and both bundle ids
-(`com.itaybraha.lugipod.teacher`, `….screen`) are created by automatic signing.
+Repository secrets: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`, `APPLE_TEAM_ID`,
+`SUPABASE_PROJECT_HOST`, `SUPABASE_PUBLISHABLE_KEY`. Run the **TestFlight** workflow. Bundle ids
+`com.itaybraha.lugipod.teacher` and `….screen`, app group `group.com.itaybraha.lugipod`.
+Push also needs, on the server (Vercel), `APNS_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`.
