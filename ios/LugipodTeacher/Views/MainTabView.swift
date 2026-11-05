@@ -52,6 +52,9 @@ struct MainTabView: View {
             HomeView()
                 .tabItem { Label("בית", systemImage: "house.fill") }
                 .tag(AppRouter.Tab.home)
+            AvailabilityView()
+                .tabItem { Label("זמינות", systemImage: "calendar.badge.clock") }
+                .tag(AppRouter.Tab.availability)
             AlertsView()
                 .tabItem { Label("התראות", systemImage: "bell.fill") }
                 .badge(inbox.unread)

@@ -6,10 +6,10 @@ struct MoreView: View {
     @EnvironmentObject private var router: AppRouter
     @State private var pushDenied = false
     @State private var confirmSignOut = false
+    @AppStorage(ShareMode.storageKey) private var shareMode = ShareMode.fast.rawValue
 
     private let tools: [(title: String, icon: String, path: String, color: Color)] = [
         ("הלוח המלא של המורה", "rectangle.grid.2x2.fill", "/teacher", .indigo),
-        ("שעות זמינות", "clock.fill", "/teacher/availability", .teal),
         ("הכנסות וכלכלה", "shekelsign.circle.fill", "/teacher/economy", .green),
         ("כספת חומרים", "folder.fill", "/teacher/vault", .orange),
         ("הסברים דחופים (SOS)", "bolt.fill", "/teacher/sos", .red),
@@ -31,6 +31,16 @@ struct MoreView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                }
+
+                Section {
+                    Picker("איכות השידור", selection: $shareMode) {
+                        ForEach(ShareMode.allCases, id: \.rawValue) { Text($0.title).tag($0.rawValue) }
+                    }
+                } header: {
+                    Text("שיתוף מסך")
+                } footer: {
+                    Text("מהיר משתמש במקודד של המכשיר כדי להקטין את ההשהיה בכתיבה. אם משהו נראה לא טוב, עברו ל״רגיל״. השינוי חל בתחילת השיתוף הבא.")
                 }
 
                 if pushDenied {

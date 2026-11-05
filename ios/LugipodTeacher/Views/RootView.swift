@@ -45,6 +45,9 @@ struct CallBar: View {
         HStack(spacing: 12) {
             Circle().fill(dot).frame(width: 10, height: 10)
             Text(label).font(.footnote.weight(.bold))
+            if call.sharing, let stats = call.shareStats {
+                Text(stats).font(.caption2.monospacedDigit()).foregroundStyle(.secondary)
+            }
             if call.phase == .live {
                 Button { call.setMic(!call.micOn) } label: {
                     Image(systemName: call.micOn ? "mic.fill" : "mic.slash.fill")
