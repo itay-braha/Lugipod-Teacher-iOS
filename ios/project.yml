@@ -30,6 +30,8 @@ targets:
       - path: LugipodTeacher
         excludes:
           - "PrivacyInfo.xcprivacy"
+      # Code shared with the Share Extension (token bridge, upload model, the share screen).
+      - path: Shared
       # Privacy manifest (required for App Store / TestFlight uploads).
       - path: LugipodTeacher/PrivacyInfo.xcprivacy
         buildPhase: resources
@@ -44,6 +46,7 @@ targets:
       - package: Daily
         product: DailySystemBroadcast
       - target: LugipodScreenCapture
+      - target: LugipodShare
     entitlements:
       path: LugipodTeacher/LugipodTeacher.entitlements
       properties:
@@ -111,6 +114,49 @@ targets:
           NSExtensionPointIdentifier: com.apple.broadcast-services-upload
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).SampleHandler
           RPBroadcastProcessMode: RPBroadcastProcessModeSampleBuffer
+
+  # "Share → לוגיפוד" (Notability quick share, Files, Photos): attach a PDF to a lesson's summary.
+  LugipodShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: LugipodShare
+        excludes:
+          - "PrivacyInfo.xcprivacy"
+      - path: LugipodShare/PrivacyInfo.xcprivacy
+        buildPhase: resources
+      - path: Shared
+      - path: LugipodTeacher/DesignSystem.swift
+      - path: LugipodTeacher/Fonts/Heebo.ttf
+        buildPhase: resources
+    configFiles:
+      Debug: Config/LugipodTeacher.xcconfig
+      Release: Config/LugipodTeacher.xcconfig
+    entitlements:
+      path: LugipodShare/LugipodShare.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.itaybraha.lugipod]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.itaybraha.lugipod.teacher.share
+        CODE_SIGN_STYLE: Automatic
+        GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: YES
+        TARGETED_DEVICE_FAMILY: "1,2"
+    info:
+      path: LugipodShare/Info.plist
+      properties:
+        CFBundleDisplayName: לוגיפוד
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UIAppFonts: [Heebo.ttf]
+        LugipodBaseURL: $(LUGIPOD_BASE_URL)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule: >-
+              SUBQUERY (extensionItems, $extensionItem, SUBQUERY ($extensionItem.attachments, $attachment, ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "com.adobe.pdf" OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO "public.image").@count >= 1).@count >= 1
 
   LugipodTeacherTests:
     type: bundle.unit-test

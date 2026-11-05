@@ -196,3 +196,42 @@ final class WebLoginTests: XCTestCase {
         XCTAssertEqual(body, "access_token=a.b-c&next=%2Fteacher%2Fsos%3Fx%3D1%26y%3D2")
     }
 }
+
+final class ShareFormatTests: XCTestCase {
+    private let now = Date(timeIntervalSince1970: 1_800_000_000)
+
+    func testAgoIsPlainHebrew() {
+        XCTAssertEqual(ShareFormat.ago(now.addingTimeInterval(-30), now: now), "הרגע")
+        XCTAssertEqual(ShareFormat.ago(now.addingTimeInterval(-12 * 60), now: now), "לפני 12 דק׳")
+        XCTAssertEqual(ShareFormat.ago(now.addingTimeInterval(-65 * 60), now: now), "לפני שעה")
+        XCTAssertEqual(ShareFormat.ago(now.addingTimeInterval(-3 * 3600), now: now), "לפני 3 שעות")
+        XCTAssertEqual(ShareFormat.ago(now.addingTimeInterval(-30 * 3600), now: now), "אתמול")
+        XCTAssertEqual(ShareFormat.ago(now.addingTimeInterval(-50 * 3600), now: now), "לפני יומיים")
+        XCTAssertEqual(ShareFormat.ago(now.addingTimeInterval(-5 * 86400), now: now), "לפני 5 ימים")
+    }
+
+    func testNamesUseFirstNames() {
+        XCTAssertEqual(ShareFormat.names(["נועה פודים", "דניאל כהן"]), "נועה, דניאל")
+        XCTAssertEqual(ShareFormat.names([]), "ללא תלמידים")
+    }
+
+    func testTargetsDecode() throws {
+        let json = """
+        {"maxBytes":26214400,"targets":[{"lessonId":"l1","groupId":"g1","title":"מתמטיקה · 5 יח״ל","students":["נועה"],
+         "endedAt":"2026-11-05T17:40:00.000Z","summarized":false,"fileCount":0}]}
+        """.data(using: .utf8)!
+        struct Reply: Decodable { let maxBytes: Int; let targets: [ShareTarget] }
+        let r = try ShareAPI.decoder.decode(Reply.self, from: json)
+        XCTAssertEqual(r.targets.first?.title, "מתמטיקה · 5 יח״ל")
+        XCTAssertEqual(r.maxBytes, 26_214_400)
+    }
+
+    func testTokenRenewalRules() {
+        let saved = ShareBridge.token
+        defer { ShareBridge.token = saved }
+        ShareBridge.clear()
+        XCTAssertTrue(ShareBridge.needsRenewal)
+        ShareBridge.token = "lps_test"
+        XCTAssertFalse(ShareBridge.needsRenewal)
+    }
+}

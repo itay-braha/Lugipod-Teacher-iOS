@@ -6,6 +6,18 @@ struct RootView: View {
     @EnvironmentObject private var router: AppRouter
 
     var body: some View {
+        #if DEBUG
+        if PreviewMode.screen == "share" {
+            ShareView(model: PreviewMode.shareModel(), onClose: {}, onDone: {})
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
+    }
+
+    private var content: some View {
         ZStack(alignment: .bottom) {
             switch auth.state {
             case .loading: LoadingView()
@@ -27,6 +39,7 @@ struct RootView: View {
             }
             #endif
             guard auth.state == .signedIn else { return }
+            await ShareSync.renewIfNeeded()
             await PushNotifications.shared.requestAuthorizationAndRegister()
             await PushNotifications.shared.uploadIfPossible()
         }

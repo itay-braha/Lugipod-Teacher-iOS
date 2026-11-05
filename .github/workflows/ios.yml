@@ -91,6 +91,8 @@ jobs:
           shoot 09-home-landscape home landscape
           shoot 10-availability-landscape availability landscape
           shoot 11-login-landscape login landscape
+          shoot 12-share share portrait
+          shoot 13-share-landscape share landscape
           ls -la shots
 
       - uses: actions/upload-artifact@v4

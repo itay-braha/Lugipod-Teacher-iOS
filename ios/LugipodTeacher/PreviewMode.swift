@@ -62,6 +62,22 @@ enum PreviewMode {
         """
     }
 
+    /// The Share Extension's screen with sample lessons (Share → לוגיפוד from Notability).
+    @MainActor
+    static func shareModel() -> ShareModel {
+        func target(_ id: String, _ title: String, _ students: [String], _ minutesAgo: Double, summarized: Bool, files: Int) -> ShareTarget {
+            ShareTarget(lessonId: id, groupId: "g-\(id)", title: title, students: students,
+                        endedAt: Date().addingTimeInterval(-minutesAgo * 60), summarized: summarized, fileCount: files)
+        }
+        let file = SharedFile(url: URL(fileURLWithPath: "/tmp/lesson.pdf"), name: "פונקציות ריבועיות - שיעור 6.pdf", mime: "application/pdf", size: 2_450_000)
+        let targets = [
+            target("l1", "מתמטיקה · 5 יח״ל", ["נועה פודים", "דניאל כהן", "יובל לוי"], 18, summarized: false, files: 0),
+            target("l2", "מדעי המחשב · 5 יח״ל", ["איאן ברק", "נור הנו"], 200, summarized: false, files: 1),
+            target("l3", "מתמטיקה · כיתה י׳", ["תמר שרון"], 60 * 26, summarized: true, files: 1),
+        ]
+        return ShareModel(file: file, preview: targets)
+    }
+
     private static func availability(empty: Bool) -> String {
         // slot = day * 48 + halfHour; days 1, 2, 4 = Mon, Tue, Thu, 16:00-19:00 = rows 32...37.
         let rows = Array(32...37)
