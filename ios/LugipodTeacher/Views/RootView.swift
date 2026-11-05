@@ -1,13 +1,39 @@
 import SwiftUI
 
-struct ContentView: View {
-    @ObservedObject var call: CallManager
+struct RootView: View {
+    @EnvironmentObject private var auth: AuthStore
+    @EnvironmentObject private var call: CallManager
+    @EnvironmentObject private var router: AppRouter
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            WebShell(call: call).ignoresSafeArea(.container, edges: .bottom)
-            if call.phase != .idle { CallBar(call: call).padding(.bottom, 12) }
+            switch auth.state {
+            case .loading: ProgressView()
+            case .notConfigured: SetupMissingView()
+            case .signedOut: LoginView()
+            case .signedIn: MainTabView()
+            }
+            if call.phase != .idle, router.web == nil { CallBar(call: call).padding(.bottom, 64) }
         }
+        .fullScreenCover(item: $router.web) { target in
+            WebScreen(path: target.path)
+                .environment(\.layoutDirection, .rightToLeft)
+        }
+        .task(id: auth.state) {
+            guard auth.state == .signedIn else { return }
+            await PushNotifications.shared.requestAuthorizationAndRegister()
+            await PushNotifications.shared.uploadIfPossible()
+        }
+    }
+}
+
+struct SetupMissingView: View {
+    var body: some View {
+        ContentUnavailableView(
+            "האפליקציה לא הוגדרה",
+            systemImage: "wrench.and.screwdriver",
+            description: Text("חסרים פרטי החיבור לשרת (Secrets.xcconfig). ראו את ה-README.")
+        )
     }
 }
 
@@ -30,7 +56,6 @@ struct CallBar: View {
         .padding(.horizontal, 16).padding(.vertical, 10)
         .background(.regularMaterial, in: Capsule())
         .shadow(radius: 6, y: 2)
-        .environment(\.layoutDirection, .rightToLeft)
     }
 
     private var dot: Color {

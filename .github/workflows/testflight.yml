@@ -30,9 +30,11 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          SUPABASE_PROJECT_HOST: ${{ secrets.SUPABASE_PROJECT_HOST }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: |
           missing=0
-          for name in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 APPLE_TEAM_ID; do
+          for name in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8 APPLE_TEAM_ID SUPABASE_PROJECT_HOST SUPABASE_PUBLISHABLE_KEY; do
             if [ -z "${!name}" ]; then echo "::error::Missing secret $name"; missing=1; fi
           done
           exit $missing
@@ -44,7 +46,10 @@ jobs:
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          SUPABASE_PROJECT_HOST: ${{ secrets.SUPABASE_PROJECT_HOST }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
         run: |
+          printf "SUPABASE_PROJECT_HOST = %s\nSUPABASE_PUBLISHABLE_KEY = %s\n" "$SUPABASE_PROJECT_HOST" "$SUPABASE_PUBLISHABLE_KEY" > ios/Config/Secrets.xcconfig
           mkdir -p "$RUNNER_TEMP/keys"
           printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/keys/AuthKey_$ASC_KEY_ID.p8"
 
@@ -122,7 +127,7 @@ jobs:
 
       - name: Remove key
         if: always()
-        run: rm -rf "$RUNNER_TEMP/keys"
+        run: rm -rf "$RUNNER_TEMP/keys" ios/Config/Secrets.xcconfig
 
       - uses: actions/upload-artifact@v4
         if: failure()

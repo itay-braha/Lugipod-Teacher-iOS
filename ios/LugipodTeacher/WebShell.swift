@@ -1,11 +1,12 @@
 import SwiftUI
 import WebKit
 
-/// The Lugipod site inside the app. It looks like the teacher's normal browser session
-/// (same login, same pages); the user agent tells the page it is in the app, so the lesson
-/// room hands the voice and the screen share to the native client.
+/// A Lugipod website page inside the app, for the screens that are not native yet (the lesson room,
+/// SOS, vault, ...). The user agent tells the page it is in the app, so the lesson room hands the
+/// voice and the screen share to the native client.
 struct WebShell: UIViewRepresentable {
     let call: CallManager
+    let request: URLRequest
 
     func makeCoordinator() -> Coordinator { Coordinator(call: call) }
 
@@ -25,7 +26,7 @@ struct WebShell: UIViewRepresentable {
         web.uiDelegate = context.coordinator
         web.isInspectable = true
         context.coordinator.web = web
-        web.load(URLRequest(url: API.baseURL.appendingPathComponent("teacher")))
+        web.load(request)
         return web
     }
 
@@ -88,5 +89,26 @@ struct WebShell: UIViewRepresentable {
         func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {
             target?.userContentController(ucc, didReceive: message)
         }
+    }
+}
+
+/// Builds the request that signs the web view in with the native session, then lands on `path`.
+enum WebLogin {
+    static func request(next path: String) async throws -> URLRequest {
+        let tokens = try await AuthStore.shared.sessionTokens()
+        var req = URLRequest(url: API.baseURL.appendingPathComponent("api/native/web-login"))
+        req.httpMethod = "POST"
+        req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        req.httpBody = formBody(["access_token": tokens.access, "refresh_token": tokens.refresh, "next": path])
+        return req
+    }
+
+    static func formBody(_ fields: [String: String]) -> Data {
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-._~")
+        let pairs = fields.map { k, v in
+            "\(k)=\(v.addingPercentEncoding(withAllowedCharacters: allowed) ?? "")"
+        }
+        return pairs.sorted().joined(separator: "&").data(using: .utf8) ?? Data()
     }
 }

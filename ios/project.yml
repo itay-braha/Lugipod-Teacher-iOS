@@ -15,6 +15,9 @@ settings:
     DEAD_CODE_STRIPPING: YES
 
 packages:
+  Supabase:
+    url: https://github.com/supabase/supabase-swift
+    exactVersion: 2.55.3
   Daily:
     url: https://github.com/daily-co/daily-client-ios
     exactVersion: 0.41.0
@@ -34,6 +37,8 @@ targets:
       Debug: Config/LugipodTeacher.xcconfig
       Release: Config/LugipodTeacher.xcconfig
     dependencies:
+      - package: Supabase
+        product: Supabase
       - package: Daily
         product: Daily
       - package: Daily
@@ -43,6 +48,7 @@ targets:
       path: LugipodTeacher/LugipodTeacher.entitlements
       properties:
         com.apple.security.application-groups: [group.com.itaybraha.lugipod]
+        aps-environment: production
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.itaybraha.lugipod.teacher
@@ -71,6 +77,8 @@ targets:
         NSCameraUsageDescription: הצגת המצלמה שלך לתלמידים בשיעור.
         NSMicrophoneUsageDescription: כדי שהתלמידים ישמעו אותך בשיעור, גם כשאת/ה עובד/ת באפליקציה אחרת.
         LugipodBaseURL: $(LUGIPOD_BASE_URL)
+        LugipodSupabaseHost: $(SUPABASE_PROJECT_HOST)
+        LugipodSupabaseKey: $(SUPABASE_PUBLISHABLE_KEY)
         RTCAppGroupIdentifier: group.com.itaybraha.lugipod
         DailyScreenCaptureExtensionBundleIdentifier: com.itaybraha.lugipod.teacher.screen
 

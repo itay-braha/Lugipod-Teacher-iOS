@@ -1,43 +1,78 @@
 import Foundation
-import WebKit
 
-enum APIError: Error { case badURL, notSignedIn, server(Int, String) }
+enum APIError: LocalizedError {
+    case badURL, notSignedIn, notATeacher
+    case server(Int, String)
 
-/// Calls the Lugipod backend as the signed-in teacher. The login lives in the web view's
-/// cookie jar; the same cookies are replayed here, so the app never handles credentials.
+    var errorDescription: String? {
+        switch self {
+        case .badURL: return "תקלה פנימית"
+        case .notSignedIn: return "יש להתחבר מחדש"
+        case .notATeacher: return "החשבון הזה אינו חשבון מורה"
+        case .server(_, let m): return m.isEmpty ? "שגיאת שרת" : m
+        }
+    }
+}
+
+/// Calls the Lugipod backend as the signed-in teacher: `Authorization: Bearer <Supabase access token>`
+/// (the SDK refreshes the token), so the app never handles passwords or cookies.
 enum API {
     static var baseURL: URL {
         let host = (Bundle.main.object(forInfoDictionaryKey: "LugipodBaseURL") as? String) ?? "lugipod.com"
         return URL(string: host.hasPrefix("http") ? host : "https://\(host)")!
     }
 
-    static func post(_ path: String, json: [String: Any]) async throws -> Data {
-        guard let url = URL(string: path, relativeTo: baseURL) else { throw APIError.badURL }
-        let host = url.host ?? ""
-        let all = await WKWebsiteDataStore.default().httpCookieStore.allCookies()
-        let cookies = all.filter { c in
-            let d = c.domain.trimmingCharacters(in: CharacterSet(charactersIn: "."))
-            return host == d || host.hasSuffix("." + d)
+    static let decoder: JSONDecoder = {
+        let d = JSONDecoder()
+        d.keyDecodingStrategy = .convertFromSnakeCase
+        d.dateDecodingStrategy = .custom { dec in
+            let s = try dec.singleValueContainer().decode(String.self)
+            guard let date = parseDate(s) else {
+                throw DecodingError.dataCorrupted(.init(codingPath: dec.codingPath, debugDescription: "bad date \(s)"))
+            }
+            return date
         }
+        return d
+    }()
+
+    /// Postgres timestamps come as `2026-11-04T09:19:00+00:00`, sometimes with fractional seconds.
+    static func parseDate(_ s: String) -> Date? {
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        if let d = plain.date(from: s) { return d }
+        let frac = ISO8601DateFormatter()
+        frac.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return frac.date(from: s)
+    }
+
+    static func request(_ method: String, _ path: String, json: [String: Any]? = nil, authorized: Bool = true) async throws -> Data {
+        guard let url = URL(string: path, relativeTo: baseURL) else { throw APIError.badURL }
         var req = URLRequest(url: url)
-        req.httpMethod = "POST"
-        req.httpShouldHandleCookies = false
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        for (k, v) in HTTPCookie.requestHeaderFields(with: cookies) { req.setValue(v, forHTTPHeaderField: k) }
-        req.httpBody = try JSONSerialization.data(withJSONObject: json)
+        req.httpMethod = method
+        req.timeoutInterval = 20
+        if let json {
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.httpBody = try JSONSerialization.data(withJSONObject: json)
+        }
+        if authorized {
+            let token = try await AuthStore.shared.accessToken()
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         let (data, resp) = try await URLSession.shared.data(for: req)
         let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
+        if (200..<300).contains(status) { return data }
+        let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        let message = obj?["error"] as? String ?? ""
         if status == 401 { throw APIError.notSignedIn }
-        guard (200..<300).contains(status) else {
-            let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
-            throw APIError.server(status, obj?["error"] as? String ?? "")
-        }
-        return data
+        if status == 403, message == "not_a_teacher" { throw APIError.notATeacher }
+        throw APIError.server(status, message)
     }
-}
 
-private extension WKHTTPCookieStore {
-    func allCookies() async -> [HTTPCookie] {
-        await withCheckedContinuation { cont in getAllCookies { cont.resume(returning: $0) } }
+    static func post(_ path: String, json: [String: Any]) async throws -> Data {
+        try await request("POST", path, json: json)
+    }
+
+    static func get<T: Decodable>(_ path: String, as type: T.Type = T.self) async throws -> T {
+        try decoder.decode(T.self, from: try await request("GET", path))
     }
 }
