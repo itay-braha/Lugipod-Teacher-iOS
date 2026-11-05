@@ -124,11 +124,13 @@ struct HomeView: View {
                             .background(Theme.amber200, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                         VStack(alignment: .leading, spacing: 3) {
                             Text(s.title).font(.heebo(17, 800)).foregroundStyle(Theme.ink)
-                            Text("נשאר למלא סיכום · \(HebrewDate.lessonText(s.scheduledAt))")
+                            Text((s.fileCount ?? 0) > 0
+                                 ? "הקובץ כבר צורף · נשאר לדרג · \(HebrewDate.lessonText(s.scheduledAt))"
+                                 : "נשאר למלא סיכום · \(HebrewDate.lessonText(s.scheduledAt))")
                                 .font(.heebo(13, 500)).foregroundStyle(Theme.amber800)
                         }
                         Spacer(minLength: 8)
-                        Text("מילוי").font(.heebo(14, 700)).foregroundStyle(.white)
+                        Text((s.fileCount ?? 0) > 0 ? "השלמה" : "מילוי").font(.heebo(14, 700)).foregroundStyle(.white)
                             .padding(.horizontal, 16).padding(.vertical, 9)
                             .background(Theme.amber500, in: Capsule())
                     }

@@ -23,11 +23,6 @@ struct ShareView: View {
         }
         .environment(\.layoutDirection, .rightToLeft)
         .tint(Theme.brand600)
-        .task(id: model.phase) {
-            guard model.phase == .done else { return }
-            try? await Task.sleep(nanoseconds: 1_400_000_000)
-            onDone()
-        }
     }
 
     // MARK: Pieces
@@ -79,11 +74,19 @@ struct ShareView: View {
                 Circle().fill(Theme.emerald100).frame(width: 92, height: 92)
                 Image(systemName: "checkmark").font(.system(size: 40, weight: .heavy)).foregroundStyle(Theme.emerald600)
             }
-            Text("הסיכום נשלח").font(.heebo(24, 800)).foregroundStyle(Theme.ink)
+            Text("הקובץ נשלח, והתלמידים כבר רואים אותו").font(.heebo(22, 800)).foregroundStyle(Theme.ink).multilineTextAlignment(.center)
             if let t = model.selected {
                 Text(t.title).font(.heebo(16, 600)).foregroundStyle(Theme.slate600)
                 Text(ShareFormat.names(t.students)).font(.heebo(14, 500)).foregroundStyle(Theme.slate500)
             }
+            VStack(spacing: 6) {
+                Text("נשאר לסכם את השיעור: נוכחות ודירוג התקדמות.").font(.heebo(15, 700)).foregroundStyle(Theme.amber800)
+                Text("שלחנו לך התראה שפותחת את המשך הסיכום. אפשר גם בכל זמן מהאפליקציה, תחת \"סיכומים שמחכים\".")
+                    .font(.heebo(14, 500)).foregroundStyle(Theme.slate600).multilineTextAlignment(.center)
+            }
+            .card(padding: 14, radius: 16, fill: Theme.amber50, border: Theme.amber200)
+            .frame(maxWidth: 460)
+            Button("סיום", action: onDone).buttonStyle(PrimaryButtonStyle()).frame(maxWidth: 460).padding(.top, 4)
         }
     }
 

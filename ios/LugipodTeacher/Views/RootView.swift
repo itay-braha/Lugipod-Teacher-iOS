@@ -7,7 +7,7 @@ struct RootView: View {
 
     var body: some View {
         #if DEBUG
-        if PreviewMode.screen == "share" {
+        if PreviewMode.screen == "share" || PreviewMode.screen == "share-done" {
             ShareView(model: PreviewMode.shareModel(), onClose: {}, onDone: {})
         } else {
             content

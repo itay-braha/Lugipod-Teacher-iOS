@@ -25,6 +25,8 @@ struct SummaryDue: Decodable, Identifiable, Equatable {
     let lessonId: String
     let title: String
     let scheduledAt: Date
+    /// Summary files already attached (shared from Notability); older servers omit it.
+    var fileCount: Int? = nil
     var id: String { lessonId }
 }
 

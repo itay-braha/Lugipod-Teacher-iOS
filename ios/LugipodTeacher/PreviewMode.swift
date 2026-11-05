@@ -75,7 +75,7 @@ enum PreviewMode {
             target("l2", "מדעי המחשב · 5 יח״ל", ["איאן ברק", "נור הנו"], 200, summarized: false, files: 1),
             target("l3", "מתמטיקה · כיתה י׳", ["תמר שרון"], 60 * 26, summarized: true, files: 1),
         ]
-        return ShareModel(file: file, preview: targets)
+        return ShareModel(file: file, preview: targets, phase: screen == "share-done" ? .done : .ready)
     }
 
     private static func availability(empty: Bool) -> String {
