@@ -3,12 +3,14 @@
 A native SwiftUI app for Lugipod **teachers** (teachers only; not the general Lugipod app).
 
 - **Home**: the week's lessons with a live phase and a join button, and the lesson summaries still owed.
+- **Availability**: the weekly-hours editor, natively (tap to flip, press-and-slide to paint, זמין / מועדף,
+  hot-demand chips, explicit save).
 - **Alerts**: the bell, natively, plus **push notifications** for every new alert.
 - **Lesson room + screen share**: an iPad browser cannot share the screen or keep the microphone alive
   with Notability in front. The room page runs inside the app, and a native Daily client carries the
   teacher's voice (background audio) and the system screen share (broadcast extension).
-- **More**: the screens not ported yet (full board, availability, economy, vault, SOS) open the Lugipod
-  website inside the app, signed in with the app's own session.
+- **More**: share quality (fast H.264 / standard), and the screens not ported (full board, economy,
+  vault, SOS), which open the Lugipod website inside the app, signed in with the app's own session.
 
 Architecture, API and push setup live in the Lugipod repo: `docs/IOS_TEACHER_APP.md`.
 
@@ -42,7 +44,9 @@ The simulator cannot run a system broadcast, the microphone, or APNs, so those n
 1. Sign in, allow notifications.
 2. Open a live lesson, join. The bar at the bottom shows "בשיחה"; students hear the teacher.
 3. Tap "שיתוף מסך" in the room, pick **שיתוף מסך**, Start Broadcast; switch to Notability.
-4. Check no echo or double audio on either side.
+4. Check no echo or double audio on either side. While sharing, the bar shows the upload rate and loss.
+   Draw in Notability and watch the laptop: compare More → שיתוף מסך → מהיר vs רגיל (the setting applies
+   at the next share start). Each share logs `native-share` lines in the Vercel runtime logs.
 5. With the lesson closed, create an alert (for example finish a lesson) and check the push arrives.
 
 ## Releasing (needs the Apple Developer account)
