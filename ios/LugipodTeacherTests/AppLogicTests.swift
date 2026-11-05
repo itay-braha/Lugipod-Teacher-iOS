@@ -160,6 +160,17 @@ final class DesignSystemTests: XCTestCase {
         XCTAssertEqual(UIColor(Theme.brand600).cgColor.components?.prefix(3).map { Int(($0 * 255).rounded()) }, [79, 70, 229])
     }
 
+    func testRelativeTimeIsPlainHebrew() {
+        let now = Date()
+        XCTAssertEqual(HebrewDate.relative(now.addingTimeInterval(15 * 60 + 5), now: now), "בעוד 15 דק׳")
+        XCTAssertEqual(HebrewDate.relative(now.addingTimeInterval(-3600 - 5), now: now), "לפני שעה")
+        XCTAssertEqual(HebrewDate.relative(now.addingTimeInterval(2 * 3600 + 5), now: now), "בעוד שעתיים")
+        XCTAssertEqual(HebrewDate.relative(now.addingTimeInterval(5 * 3600 + 5), now: now), "בעוד 5 שעות")
+        XCTAssertEqual(HebrewDate.relative(now.addingTimeInterval(26 * 3600), now: now), "בעוד יום")
+        XCTAssertEqual(HebrewDate.relative(now.addingTimeInterval(-3 * 86400 - 5), now: now), "לפני 3 ימים")
+        XCTAssertEqual(HebrewDate.relative(now.addingTimeInterval(20), now: now), "עכשיו")
+    }
+
     func testHebrewDateHelpers() {
         let d = Date(timeIntervalSince1970: 1_793_000_000)
         XCTAssertFalse(HebrewDate.weekday(d).hasPrefix("יום"))

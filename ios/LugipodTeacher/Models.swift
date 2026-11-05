@@ -96,10 +96,20 @@ enum HebrewDate {
             : lesson.string(from: d)
     }
 
-    static func relative(_ d: Date) -> String {
-        let f = RelativeDateTimeFormatter()
-        f.locale = Locale(identifier: "he_IL")
-        f.unitsStyle = .short
-        return f.localizedString(for: d, relativeTo: Date())
+    /// "בעוד 15 דק׳", "לפני שעה", "בעוד יומיים". (The system formatter appends a stray "(1)" in Hebrew.)
+    static func relative(_ d: Date, now: Date = Date()) -> String {
+        let seconds = d.timeIntervalSince(now)
+        let magnitude = abs(seconds)
+        let minutes = Int(magnitude / 60), hours = Int(magnitude / 3600), days = Int(magnitude / 86400)
+        if minutes < 1 { return "עכשיו" }
+        let amount: String
+        if minutes < 60 {
+            amount = "\(minutes) דק׳"
+        } else if hours < 24 {
+            amount = hours == 1 ? "שעה" : hours == 2 ? "שעתיים" : "\(hours) שעות"
+        } else {
+            amount = days == 1 ? "יום" : days == 2 ? "יומיים" : "\(days) ימים"
+        }
+        return (seconds > 0 ? "בעוד " : "לפני ") + amount
     }
 }
