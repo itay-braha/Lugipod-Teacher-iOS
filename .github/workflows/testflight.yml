@@ -128,6 +128,18 @@ jobs:
           tail -5 export.log
           echo "Uploaded. It shows up in App Store Connect > TestFlight after Apple finishes processing (5-30 min)."
 
+      # Automatic signing on a fresh runner mints a new development certificate on EVERY run, and Apple caps
+      # how many an account may hold ("reached the maximum number of certificates"). This removes only the
+      # certificates THIS run created (matched by fingerprint to this runner's keychain), so a certificate
+      # made by another run or project is never touched. It cannot fail the job.
+      - name: Remove the certificates this run created
+        if: always()
+        continue-on-error: true
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: ASC_KEY_PATH="$RUNNER_TEMP/keys/AuthKey_$ASC_KEY_ID.p8" node .github/scripts/revoke-own-certs.mjs || true
+
       - name: Remove key
         if: always()
         run: rm -rf "$RUNNER_TEMP/keys" ios/Config/Secrets.xcconfig
