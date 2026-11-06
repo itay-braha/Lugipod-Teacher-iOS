@@ -12,7 +12,7 @@ struct WebShell: UIViewRepresentable {
 
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
-        config.applicationNameForUserAgent = "LugipodTeacherApp/1"
+        config.applicationNameForUserAgent = "LugipodTeacherApp/2"
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
         config.userContentController.add(WeakHandler(context.coordinator), name: "lugipod")

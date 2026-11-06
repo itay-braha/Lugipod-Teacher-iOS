@@ -24,17 +24,30 @@ enum ShareMode: String, CaseIterable {
     var codecName: String { self == .fast ? "h264" : "default" }
 }
 
-/// The teacher's native call client. It joins the lesson room as a second participant
-/// ("<name> · iPad") carrying the teacher's voice (kept alive in the background, so
-/// Notability can be in front) and the system screen share. The web page stays the
-/// control surface: heartbeat, files, end/leave. This object also keeps the lesson's
-/// presence heartbeat going, because a backgrounded web view stops running timers.
+/// One person in the room, as the lesson screen draws them.
+struct CallTile: Identifiable, Equatable {
+    let id: String
+    let name: String
+    let camera: VideoTrack?
+    let screen: VideoTrack?
+    let micMuted: Bool
+}
+
+/// The teacher's native call client, and the teacher's ONLY participant in the lesson room (the
+/// lesson page does not join the video call in the app, so the room counts the teacher once). It carries
+/// the voice (kept alive in the background, so Notability can be in front), the system screen share,
+/// and draws the students (`tiles`). The web page is the control surface: heartbeat, files, extra time,
+/// end/leave. This object also keeps the lesson's presence heartbeat going, because a backgrounded
+/// web view stops running timers.
 final class CallManager: NSObject, ObservableObject {
     enum Phase: Equatable { case idle, joining, live, failed(String) }
 
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var micOn = true
     @Published private(set) var sharing = false
+    /// Everyone else in the room, for the video panel.
+    @Published private(set) var tiles: [CallTile] = []
+    @Published private(set) var cameraOn = false
     /// A one-line readout of what the iPad is uploading while sharing, e.g. "↑ 1.8 Mbps · אובדן 0.2%".
     @Published private(set) var shareStats: String?
 
@@ -65,11 +78,13 @@ final class CallManager: NSObject, ObservableObject {
             client = call
             call.setInputsEnabled([.camera: false, .microphone: true], completion: nil)
             micOn = true
+            cameraOn = false
             call.join(url: url, token: MeetingToken(stringValue: token)) { [weak self] result in
                 DispatchQueue.main.async {
                     switch result {
                     case .success:
                         self?.phase = .live
+                        self?.refreshParticipants()
                         self?.startHeartbeat()
                     case .failure(let e):
                         self?.fail("לא הצלחנו להתחבר לשיחה (\(e))")
@@ -89,8 +104,56 @@ final class CallManager: NSObject, ObservableObject {
         client = nil
         session = nil
         micOn = true
+        cameraOn = false
+        tiles = []
         setSharing(false)
         phase = .idle
+    }
+
+    #if DEBUG
+    /// Sample room for the CI screenshots (preview mode "call"): no network, no video tracks.
+    @MainActor
+    func loadPreview() {
+        phase = .live
+        micOn = true
+        tiles = [
+            CallTile(id: "s1", name: "נועה פודים", camera: nil, screen: nil, micMuted: false),
+            CallTile(id: "s2", name: "דניאל כהן", camera: nil, screen: nil, micMuted: true),
+        ]
+    }
+    #endif
+
+    /// Tries the same lesson again after a failed join.
+    @MainActor
+    func retry() async {
+        guard let session else { return }
+        await start(kind: session.kind, ref: session.ref)
+    }
+
+    @MainActor
+    func setCamera(_ on: Bool) {
+        cameraOn = on
+        client?.setInputEnabled(.camera, on, completion: nil)
+    }
+
+    /// Rebuilds the tiles from Daily's participant list.
+    @MainActor
+    func refreshParticipants() {
+        guard let client else { tiles = []; return }
+        tiles = client.participants.remote.values
+            .map { p -> CallTile in
+                let muted: Bool
+                switch p.media?.microphone.state {
+                case .some(.off): muted = true
+                default: muted = false
+                }
+                return CallTile(id: p.id.uuidString,
+                                name: p.info.username ?? "משתתף/ת",
+                                camera: p.media?.camera.track,
+                                screen: p.media?.screenVideo.track,
+                                micMuted: muted)
+            }
+            .sorted { $0.name < $1.name }
     }
 
     @MainActor
@@ -200,6 +263,18 @@ extension CallManager: CallClientDelegate {
             self.startPublishingScreen(callClient)
             self.setSharing(true)
         }
+    }
+
+    func callClient(_ callClient: CallClient, participantJoined participant: Participant) {
+        Task { @MainActor in self.refreshParticipants() }
+    }
+
+    func callClient(_ callClient: CallClient, participantUpdated participant: Participant) {
+        Task { @MainActor in self.refreshParticipants() }
+    }
+
+    func callClient(_ callClient: CallClient, participantLeft participant: Participant, withReason reason: ParticipantLeftReason) {
+        Task { @MainActor in self.refreshParticipants() }
     }
 
     func callClient(_ callClient: CallClient, networkStatsUpdated networkStats: NetworkStats) {

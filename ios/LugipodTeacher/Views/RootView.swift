@@ -9,6 +9,10 @@ struct RootView: View {
         #if DEBUG
         if PreviewMode.screen == "share" || PreviewMode.screen == "share-done" {
             ShareView(model: PreviewMode.shareModel(), onClose: {}, onDone: {})
+        } else if PreviewMode.screen == "call" {
+            LessonCallScreen(path: "/meeting/lesson/preview")
+                .environment(\.layoutDirection, .rightToLeft)
+                .task { call.loadPreview() }
         } else {
             content
         }
@@ -28,8 +32,15 @@ struct RootView: View {
             if call.phase != .idle, router.web == nil { CallBar(call: call).padding(.bottom, 64) }
         }
         .fullScreenCover(item: $router.web) { target in
-            WebScreen(path: target.path)
-                .environment(\.layoutDirection, .rightToLeft)
+            Group {
+                // The lesson room: native video on top, the page below it as the controls.
+                if target.path.hasPrefix("/meeting") {
+                    LessonCallScreen(path: target.path)
+                } else {
+                    WebScreen(path: target.path)
+                }
+            }
+            .environment(\.layoutDirection, .rightToLeft)
         }
         .task(id: auth.state) {
             #if DEBUG
