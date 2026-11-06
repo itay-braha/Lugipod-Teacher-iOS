@@ -32,6 +32,7 @@ struct LessonCallScreen: View {
                 }
             }
         }
+        .preferredColorScheme(.dark)
     }
 }
 
@@ -55,7 +56,7 @@ struct CallVideoPanel: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
+        ZStack(alignment: .topLeading) {
             Color(hex: 0x0B1020)
             content
             controls
