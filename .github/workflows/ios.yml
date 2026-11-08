@@ -63,6 +63,21 @@ jobs:
             > test.log 2>&1 || { grep -E "error:|\*\* (BUILD|TEST)|failed" test.log | tail -80; exit 1; }
           grep -E "Test Suite|\*\* TEST" test.log | tail -15
 
+      # The sign-in typing tests photograph what a teacher sees while typing into the phone box (LoginTypingUITests).
+      - name: Collect typing screenshots
+        if: always()
+        run: |
+          mkdir -p uishots
+          cp /tmp/lugipod-ui/*.png uishots/ 2>/dev/null || echo "no typing screenshots"
+          ls uishots
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-typing-${{ github.run_number }}
+          path: uishots
+          if-no-files-found: ignore
+
       # Photographs every screen in the iPad simulator, using the DEBUG-only preview mode (sample
       # data, no sign-in), so the design can be reviewed without a device. See PreviewMode.swift.
       - name: Screenshots

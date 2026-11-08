@@ -61,7 +61,7 @@ struct LoginView: View {
                     .font(.heebo(22, 800)).foregroundStyle(Theme.ink)
                 Text(step == .phone
                      ? "נשלח קוד חד-פעמי לוואטסאפ שלכם."
-                     : "שלחנו קוד בן 6 ספרות ל-\(Phone.format(phone)).")
+                     : "שלחנו קוד בן 6 ספרות ל-\(Phone.international(phone)).")
                     .font(.heebo(15, 500)).foregroundStyle(Theme.slate500)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -95,19 +95,13 @@ struct LoginView: View {
     private var phoneStep: some View {
         VStack(spacing: 16) {
             LugiFieldBox(label: "מספר טלפון", focused: focused) {
-                HStack(spacing: 10) {
-                    Text("🇮🇱").font(.system(size: 22))
-                    TextField("050-123-4567", text: $phone)
-                        .keyboardType(.numberPad).textContentType(.telephoneNumber)
-                        .font(.heebo(21, 600).monospacedDigit())
-                        .environment(\.layoutDirection, .leftToRight)
-                        .multilineTextAlignment(.leading)
-                        .focused($focused)
-                        .onChange(of: phone) { _, new in
-                            let f = Phone.format(new)
-                            if f != new { phone = f }
-                        }
-                }
+                PhoneField(phone: $phone, focused: $focused)
+            }
+            if Phone.isValid(phone) {
+                Text("נשלח קוד בוואטסאפ למספר \(Phone.international(phone))")
+                    .font(.heebo(13, 600)).foregroundStyle(Theme.emerald700)
+                    .environment(\.layoutDirection, .rightToLeft)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             Button { Task { await sendCode() } } label: {
                 HStack(spacing: 8) {
@@ -177,6 +171,70 @@ struct LoginView: View {
     }
 }
 
+/// The phone box: a fixed 🇮🇱 +972, then the nine digits people type (always starting with 5), dashes added by themselves: 50-123-4567.
+/// The keyboard talks to an invisible text field; what the person sees is plain system-font `Text` in solid colours with our own caret,
+/// so what they type can never turn out invisible (the way the code boxes below already work).
+struct PhoneField: View {
+    @Binding var phone: String
+    var focused: FocusState<Bool>.Binding
+
+    private static let ink = Color(red: 0.06, green: 0.09, blue: 0.16)
+    private var digitFont: Font { .system(size: 25, weight: .medium).monospacedDigit() }
+
+    var body: some View {
+        let typed = Phone.national(phone)
+        ZStack(alignment: .leading) {
+            TextField("", text: $phone)
+                .keyboardType(.numberPad).textContentType(.telephoneNumber)
+                .focused(focused)
+                .opacity(0.02)
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .accessibilityIdentifier("phone-input")
+                .accessibilityLabel("מספר טלפון")
+            HStack(spacing: 12) {
+                HStack(spacing: 7) {
+                    Text("🇮🇱").font(.system(size: 26))
+                    Text("+972").font(.system(size: 21, weight: .medium).monospacedDigit()).foregroundStyle(Self.ink)
+                }
+                Rectangle().fill(Theme.slate200).frame(width: 1, height: 30)
+                HStack(spacing: 1) {
+                    if !typed.isEmpty {
+                        Text(typed).font(digitFont).foregroundStyle(Self.ink)
+                            .accessibilityIdentifier("phone-display")
+                    }
+                    if focused.wrappedValue { Caret() }
+                    if typed.isEmpty { Text("50-123-4567").font(digitFont).foregroundStyle(Theme.slate300) }   // light placeholder, gone with the first digit
+                }
+                .lineLimit(1).minimumScaleFactor(0.7)
+                Spacer(minLength: 0)
+            }
+            .allowsHitTesting(false)
+        }
+        .environment(\.layoutDirection, .leftToRight)
+        .contentShape(Rectangle())
+        .onTapGesture { focused.wrappedValue = true }
+        // Only the nine digits after +972 are typed, the first is always 5 (`Phone.sanitizeTyped`). Ordinary typing is never rewritten under the
+        // keyboard (that lost keystrokes); a refused key (a 0 or another first digit), extra digits and a paste are the only things tidied.
+        .onChange(of: phone) { old, new in
+            let s = Phone.sanitizeTyped(old: old, new: new)
+            if s != new { phone = s }
+        }
+    }
+}
+
+/// A blinking text cursor for the boxes we draw ourselves.
+struct Caret: View {
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.5)) { ctx in
+            Rectangle()
+                .fill(Theme.brand500)
+                .frame(width: 2, height: 26)
+                .opacity(Int(ctx.date.timeIntervalSinceReferenceDate * 2) % 2 == 0 ? 1 : 0)
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 /// Six digit boxes driven by one hidden text field (so the keyboard's one-time-code suggestion works).
 struct OTPBoxes: View {
     @Binding var code: String
@@ -238,16 +296,18 @@ struct EmailLoginView: View {
                             TextField("name@example.com", text: $email)
                                 .keyboardType(.emailAddress).textContentType(.username)
                                 .textInputAutocapitalization(.never).autocorrectionDisabled()
-                                .font(.heebo(17, 500))
+                                .font(.heebo(17, 500)).foregroundStyle(Theme.ink)
                                 .environment(\.layoutDirection, .leftToRight)
                                 .focused($field, equals: .email)
+                                .accessibilityIdentifier("email-input")
                         }
                         LugiFieldBox(label: "סיסמה", focused: field == .password) {
                             SecureField("••••••••", text: $password)
                                 .textContentType(.password)
-                                .font(.heebo(17, 500))
+                                .font(.heebo(17, 500)).foregroundStyle(Theme.ink)
                                 .environment(\.layoutDirection, .leftToRight)
                                 .focused($field, equals: .password)
+                                .accessibilityIdentifier("password-input")
                         }
                         if let error {
                             Text(error).font(.heebo(13, 600)).foregroundStyle(Theme.rose600)
