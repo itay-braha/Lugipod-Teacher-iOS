@@ -24,9 +24,13 @@ final class PhoneTests: XCTestCase {
         XCTAssertEqual(Phone.national(""), "")
         XCTAssertEqual(Phone.international("501234567"), "+972 50-123-4567")
         // typing: 0 and other first digits are refused, extra digits ignored
-        XCTAssertEqual(Phone.sanitizeTyped(old: "", new: "0"), "")
+        XCTAssertEqual(Phone.national("0"), "")                                             // a typed 0 is never shown
+        XCTAssertEqual(Phone.sanitizeTyped(old: "", new: "0"), "0")                         // ...and not rewritten away under the keyboard
+        XCTAssertEqual(Phone.sanitizeTyped(old: "", new: "00"), "")
         XCTAssertEqual(Phone.sanitizeTyped(old: "", new: "3"), "")
-        XCTAssertEqual(Phone.sanitizeTyped(old: "", new: "05"), "5")
+        XCTAssertEqual(Phone.sanitizeTyped(old: "0", new: "05"), "05")
+        XCTAssertEqual(Phone.national("05"), "5")
+        XCTAssertEqual(Phone.sanitizeTyped(old: "0501234567", new: "05012345679"), "0501234567")
         XCTAssertEqual(Phone.sanitizeTyped(old: "", new: "5"), "5")
         XCTAssertEqual(Phone.sanitizeTyped(old: "50", new: "501"), "501")
         XCTAssertEqual(Phone.sanitizeTyped(old: "5012", new: "501234"), "501234")          // two keystrokes in one change are normal typing

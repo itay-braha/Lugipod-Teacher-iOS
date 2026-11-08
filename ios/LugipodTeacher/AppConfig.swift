@@ -58,13 +58,18 @@ enum Phone {
     /// A leading 0 is never accepted, any other first digit is refused, extra digits are ignored, and a pasted or auto-filled number
     /// ("+972 50-123-4567", "0501234567", "٥٠…") is tidied once into those nine digits. Ordinary typing is returned unchanged (so the
     /// keyboard's text is never rewritten under it); two fast keystrokes arriving together are ordinary typing.
+    ///
+    /// A typed leading 0 is never shown (`national` skips it) and is deliberately NOT rewritten away while typing: rewriting the text
+    /// under the keyboard races with the next keystrokes (it lost them on the slower iPad simulator), so a single leading 0 stays in
+    /// the raw text, invisible, and goes away with the paste/trim paths.
     static func sanitizeTyped(old: String, new: String) -> String {
         let plain = new.allSatisfy { $0 >= "0" && $0 <= "9" }
         var t = new
         if !plain || new.count - old.count >= 8 { t = String(digits(new).dropFirst(digits(new).hasPrefix("0") ? 1 : 0)) }
-        t = String(t.drop(while: { $0 == "0" }))
-        if let first = t.first, first != "5" { return "" }
-        return String(t.prefix(9))
+        let zero = t.hasPrefix("0")
+        let body = zero ? String(t.dropFirst()) : t
+        if let first = body.first, first != "5" { return "" }
+        return (zero ? "0" : "") + String(body.prefix(9))
     }
 
     static func isValid(_ raw: String) -> Bool {
