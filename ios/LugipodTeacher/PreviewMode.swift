@@ -43,8 +43,8 @@ enum PreviewMode {
         {"teacher":{"id":"t1","name":"איתי ברכה"},
          "lessons":[
            {"id":"l1","title":"מתמטיקה · 5 יח״ל","students":3,"scheduledAt":"\(iso(-600))","durationMin":90,"phase":"live"},
-           {"id":"l2","title":"מדעי המחשב · 5 יח״ל","students":2,"scheduledAt":"\(iso(26 * 3600))","durationMin":90,"phase":"upcoming","groupId":"g2","weekly":2},
-           {"id":"l3","title":"מדעי המחשב · 5 יח״ל","students":2,"scheduledAt":"\(iso(50 * 3600))","durationMin":90,"phase":"upcoming","groupId":"g2","weekly":2},
+           {"id":"l2","title":"מדעי המחשב · 5 יח״ל","students":2,"scheduledAt":"\(iso(26 * 3600))","durationMin":90,"phase":"upcoming","groupId":"g2","weekly":2,"weeklyTimes":["יום ד׳ 17:00–18:30","יום ו׳ 10:00–11:30"]},
+           {"id":"l3","title":"מדעי המחשב · 5 יח״ל","students":2,"scheduledAt":"\(iso(50 * 3600))","durationMin":90,"phase":"upcoming","groupId":"g2","weekly":2,"weeklyTimes":["יום ד׳ 17:00–18:30","יום ו׳ 10:00–11:30"]},
            {"id":"l4","title":"מתמטיקה · כיתה י׳","students":1,"scheduledAt":"\(iso(74 * 3600))","durationMin":60,"phase":"upcoming"}],
          "summariesDue":[{"lessonId":"l0","title":"מתמטיקה · 5 יח״ל","scheduledAt":"\(iso(-30 * 3600))"}],
          "unreadAlerts":2}

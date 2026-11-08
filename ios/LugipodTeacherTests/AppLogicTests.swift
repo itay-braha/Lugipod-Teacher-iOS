@@ -60,6 +60,19 @@ final class DecodingTests: XCTestCase {
         XCTAssertEqual(r.unreadAlerts, 2)
     }
 
+    func testGroupThatMeetsTwiceAWeekCarriesItsWeeklyTimes() throws {
+        let json = """
+        {"teacher":{"id":"t1","name":"איתי"},
+         "lessons":[
+           {"id":"l1","title":"מתמטיקה","students":1,"scheduledAt":"2026-11-09T15:00:00+00:00","durationMin":90,"phase":"upcoming","groupId":"g1","weekly":2,"weeklyTimes":["יום ב׳ 17:00–18:30","יום ה׳ 17:00–18:30"]},
+           {"id":"l2","title":"פיזיקה","students":3,"scheduledAt":"2026-11-10T15:00:00+00:00","durationMin":90,"phase":"upcoming"}],
+         "summariesDue":[],"unreadAlerts":0}
+        """.data(using: .utf8)!
+        let r = try API.decoder.decode(HomeResponse.self, from: json)
+        XCTAssertEqual(r.lessons[0].weeklyTimes, ["יום ב׳ 17:00–18:30", "יום ה׳ 17:00–18:30"])
+        XCTAssertNil(r.lessons[1].weeklyTimes)                       // a once-a-week group (or an older server) sends none
+    }
+
     func testAlertsResponseSnakeCase() throws {
         let json = """
         {"alerts":[{"id":"a1","type":"lesson_summary_due","title":"📝","body":null,"emoji":"📝","ref_id":"l1",

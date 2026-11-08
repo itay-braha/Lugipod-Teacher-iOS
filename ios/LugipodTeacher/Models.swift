@@ -22,6 +22,8 @@ struct LessonItem: Decodable, Identifiable, Equatable {
     /// The group and how many weekly lessons it has (0232); older servers omit both.
     var groupId: String? = nil
     var weekly: Int? = nil
+    /// The weekly times, the next one first ("יום ב׳ 17:00–18:30"); only sent for groups that meet more than once a week.
+    var weeklyTimes: [String]? = nil
 }
 
 struct SummaryDue: Decodable, Identifiable, Equatable {

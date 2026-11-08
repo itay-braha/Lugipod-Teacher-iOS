@@ -226,12 +226,17 @@ struct LessonCard: View {
                     HStack(spacing: 14) {
                         Label(HebrewDate.timeRange(lesson.scheduledAt, minutes: lesson.durationMin), systemImage: "clock")
                         Label("\(lesson.students) תלמידים", systemImage: "person.2.fill")
-                        if let w = lesson.weekly, w > 1 {
-                            Label("\(w) מפגשים בשבוע", systemImage: "repeat")
+                        if let w = lesson.weekly, w > 1, (lesson.weeklyTimes ?? []).isEmpty {
+                            Label("\(w) מפגשים בשבוע", systemImage: "repeat")      // an older server: only the count
                         }
                     }
                     .font(.heebo(14, 600)).foregroundStyle(Theme.slate500)
                     .labelStyle(.titleAndIcon)
+                    if let times = lesson.weeklyTimes, times.count > 1 {
+                        Label(times.joined(separator: " · "), systemImage: "repeat")
+                            .font(.heebo(13, 700)).foregroundStyle(Theme.brand700)
+                            .labelStyle(.titleAndIcon)
+                    }
                 }
                 Spacer(minLength: 8)
                 status
@@ -307,6 +312,10 @@ struct LessonDetailSheet: View {
                         row("hourglass", "משך", "\(lesson.durationMin) דקות")
                         Divider().overlay(Theme.slate100)
                         row("person.2.fill", "תלמידים בקבוצה", "\(lesson.students)")
+                        if let times = lesson.weeklyTimes, times.count > 1 {
+                            Divider().overlay(Theme.slate100)
+                            weeklyRow(times)
+                        }
                     }
                     .card(padding: 6)
 
@@ -329,6 +338,26 @@ struct LessonDetailSheet: View {
                 .padding(20)
             }
         }
+    }
+
+    /// A group that meets several times a week: every weekly time on its own line, the one that comes next first.
+    private func weeklyRow(_ times: [String]) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "repeat").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.brand600)
+                .frame(width: 34, height: 34).background(Theme.brand50, in: RoundedRectangle(cornerRadius: 10))
+            Text("מפגשים קבועים בשבוע").font(.heebo(15, 600)).foregroundStyle(Theme.slate600)
+            Spacer()
+            VStack(alignment: .trailing, spacing: 4) {
+                ForEach(Array(times.enumerated()), id: \.offset) { i, t in
+                    HStack(spacing: 6) {
+                        if i == 0 { Text("הבא").font(.heebo(11, 800)).foregroundStyle(Theme.amber800)
+                            .padding(.horizontal, 7).padding(.vertical, 2).background(Theme.amber100, in: Capsule()) }
+                        Text(t).font(.heebo(16, 800)).foregroundStyle(Theme.ink)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 14).padding(.vertical, 12)
     }
 
     private func row(_ icon: String, _ title: String, _ value: String) -> some View {
