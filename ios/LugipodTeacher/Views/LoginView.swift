@@ -304,7 +304,7 @@ struct EmailLoginView: View {
                         LugiFieldBox(label: "סיסמה", focused: field == .password) {
                             SecureField("••••••••", text: $password)
                                 .textContentType(.password)
-                                .font(.heebo(17, 500)).foregroundStyle(Theme.ink)
+                                .font(.system(size: 18, weight: .medium)).foregroundStyle(Theme.ink)
                                 .environment(\.layoutDirection, .leftToRight)
                                 .focused($field, equals: .password)
                                 .accessibilityIdentifier("password-input")
