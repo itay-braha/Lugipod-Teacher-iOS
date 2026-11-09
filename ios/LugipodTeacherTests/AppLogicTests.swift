@@ -276,4 +276,12 @@ final class ShareFormatTests: XCTestCase {
         try XCTSkipIf(ShareBridge.token == nil, "no keychain access in this build")
         XCTAssertFalse(ShareBridge.needsRenewal)
     }
+
+    func testOnlyAdminAndDemoAccountsMayUseThePasswordDoor() {
+        XCTAssertTrue(AuthStore.emailLoginAllowed("appreview@lugipod.demo"))
+        XCTAssertTrue(AuthStore.emailLoginAllowed(" LugiPod@Gmail.com "))
+        XCTAssertFalse(AuthStore.emailLoginAllowed("lugispod+noa@gmail.com"))
+        XCTAssertFalse(AuthStore.emailLoginAllowed("x@lugipod.demo.evil.com"))
+        XCTAssertFalse(AuthStore.emailLoginAllowed("lugipod@gmail.com.evil.com"))
+    }
 }

@@ -61,7 +61,17 @@ final class AuthStore: ObservableObject {
         _ = try await client.auth.verifyOTP(phone: Phone.e164(phone), token: code, type: .sms)
     }
 
+    enum EmailLoginError: Error { case notAllowed }
+
+    /// Who may use the email + password door: the admin and the test / App Review accounts. Everyone else signs in with the phone and the
+    /// WhatsApp code, so we always have their number. (Same rule as the website, src/shared/emailLogin.ts, and the database.)
+    nonisolated static func emailLoginAllowed(_ email: String) -> Bool {
+        let e = email.trimmingCharacters(in: .whitespaces).lowercased()
+        return e.hasSuffix("@lugipod.demo") || e == "lugipod@gmail.com"
+    }
+
     func signIn(email: String, password: String) async throws {
+        guard Self.emailLoginAllowed(email) else { throw EmailLoginError.notAllowed }
         notice = nil
         _ = try await client.auth.signIn(email: email, password: password)
     }
