@@ -31,7 +31,9 @@ final class AuthStore: ObservableObject {
     }
 
     private func bootstrap() async {
-        state = (try? await client.auth.session) != nil ? .signedIn : .signedOut
+        // A stored session = signed in, even if refreshing it fails right now (no network at launch). The SDK deletes the
+        // session and emits .signedOut only when Supabase really rejects it.
+        state = client.auth.currentSession != nil ? .signedIn : .signedOut
         for await change in client.auth.authStateChanges {
             switch change.event {
             case .signedIn, .tokenRefreshed: if change.session != nil { state = .signedIn }
@@ -84,11 +86,30 @@ final class AuthStore: ObservableObject {
         self.notice = notice
     }
 
+
+    // MARK: Staying signed in
+    //
+    // Every new login costs a paid WhatsApp code, so the app signs out ONLY when the session is really gone: the person pressed
+    // "התנתקות", or the SDK deleted the stored session because Supabase rejected the refresh token. No network at launch, a
+    // timeout while refreshing, or one 401 from our API never sign anyone out (they used to, on every screen).
+
+    /// What a failed session read means: notSignedIn only when no session is stored any more; otherwise a temporary problem.
+    private func sessionError(_ error: Error) -> Error {
+        client.auth.currentSession == nil ? APIError.notSignedIn : APIError.server(0, "offline")
+    }
+
+    /// After a 401 from our API: refresh the session once so the call can be retried. Throws notSignedIn only when the
+    /// session is really gone, otherwise a temporary error (the stored session stays).
+    func refreshAfterUnauthorized() async throws {
+        guard AppConfig.isConfigured else { throw APIError.notSignedIn }
+        do { _ = try await client.auth.refreshSession() } catch { throw sessionError(error) }
+    }
+
     // MARK: Tokens
 
     func accessToken() async throws -> String {
         guard AppConfig.isConfigured else { throw APIError.notSignedIn }
-        do { return try await client.auth.session.accessToken } catch { throw APIError.notSignedIn }
+        do { return try await client.auth.session.accessToken } catch { throw sessionError(error) }
     }
 
     /// For signing the in-app web pages in (POST /api/native/web-login).
@@ -97,6 +118,6 @@ final class AuthStore: ObservableObject {
         do {
             let s = try await client.auth.session
             return (s.accessToken, s.refreshToken)
-        } catch { throw APIError.notSignedIn }
+        } catch { throw sessionError(error) }
     }
 }

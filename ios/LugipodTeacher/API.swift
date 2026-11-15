@@ -45,7 +45,7 @@ enum API {
         return frac.date(from: s)
     }
 
-    static func request(_ method: String, _ path: String, json: [String: Any]? = nil, authorized: Bool = true) async throws -> Data {
+    static func request(_ method: String, _ path: String, json: [String: Any]? = nil, authorized: Bool = true, retried: Bool = false) async throws -> Data {
         #if DEBUG
         if PreviewMode.isOn { return PreviewMode.response(method: method, path: path) }
         #endif
@@ -66,7 +66,12 @@ enum API {
         if (200..<300).contains(status) { return data }
         let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
         let message = obj?["error"] as? String ?? ""
-        if status == 401 { throw APIError.notSignedIn }
+        if status == 401 {
+            // One 401 is not a sign-out: refresh the session and retry once. Only a session that is really gone becomes notSignedIn.
+            guard authorized, !retried else { throw APIError.server(401, message) }
+            try await AuthStore.shared.refreshAfterUnauthorized()
+            return try await request(method, path, json: json, authorized: authorized, retried: true)
+        }
         if status == 403, message == "not_a_teacher" { throw APIError.notATeacher }
         throw APIError.server(status, message)
     }
