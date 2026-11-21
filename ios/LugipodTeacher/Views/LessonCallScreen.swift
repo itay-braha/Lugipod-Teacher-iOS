@@ -116,6 +116,15 @@ struct CallVideoPanel: View {
                         .background(call.cameraOn ? Color.white : Color.white.opacity(0.16), in: Circle())
                 }
                 .accessibilityLabel(call.cameraOn ? "כיבוי מצלמה" : "הפעלת מצלמה")
+                // A step-by-step solution for the whole room: the lesson page below opens its picker, and the solution appears there
+                // (every student sees the step the teacher is on).
+                Button { call.onEvent?(["command": "share-solution"]) } label: {
+                    Label("פתרון לכולם", systemImage: "pencil.and.ruler.fill")
+                        .font(.heebo(13, 800)).foregroundStyle(.white)
+                        .padding(.horizontal, 12).frame(height: 38)
+                        .background(Theme.brand600, in: Capsule())
+                }
+                .accessibilityLabel("פתרון שלב אחר שלב לכל הכיתה")
             }
             .padding(12)
         }
