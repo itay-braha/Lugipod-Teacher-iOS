@@ -13,9 +13,9 @@ final class HomeModel: ObservableObject {
             data = try await API.get("/api/native/home", as: HomeResponse.self)
             error = nil
         } catch APIError.notATeacher {
-            await AuthStore.shared.signOut(notice: "החשבון הזה אינו חשבון מורה. האפליקציה מיועדת למורים בלבד.")
+            await AuthStore.shared.signOut(notice: "החשבון הזה אינו חשבון מורה. האפליקציה מיועדת למורים בלבד.", reason: "not_a_teacher")
         } catch APIError.notSignedIn {
-            await AuthStore.shared.signOut()
+            await AuthStore.shared.sessionLost("HomeView")
         } catch {
             self.error = "לא הצלחנו לטעון את הנתונים. בדקו חיבור ונסו שוב."
         }

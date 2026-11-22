@@ -17,7 +17,7 @@ final class InboxModel: ObservableObject {
             loaded = true
             PushNotifications.shared.setBadge(r.unread)
         } catch APIError.notSignedIn {
-            await AuthStore.shared.signOut()
+            await AuthStore.shared.sessionLost("MainTabView")
         } catch {
             self.error = "לא הצלחנו לטעון את ההתראות"
         }

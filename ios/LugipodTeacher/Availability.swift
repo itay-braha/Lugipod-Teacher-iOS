@@ -183,7 +183,7 @@ final class AvailabilityModel: ObservableObject {
             hot = r.hot
             phase = .ready
         } catch APIError.notSignedIn {
-            await AuthStore.shared.signOut()
+            await AuthStore.shared.sessionLost("Availability")
         } catch {
             phase = .failed
         }
@@ -203,7 +203,7 @@ final class AvailabilityModel: ObservableObject {
             savedPreferred = pref
             justSaved = true
         } catch APIError.notSignedIn {
-            await AuthStore.shared.signOut()
+            await AuthStore.shared.sessionLost("Availability")
         } catch {
             self.error = "השמירה נכשלה. בדקו חיבור ונסו שוב."
         }

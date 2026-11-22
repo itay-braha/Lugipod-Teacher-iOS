@@ -25,6 +25,8 @@ Architecture, API and push setup live in the Lugipod repo: `docs/IOS_TEACHER_APP
  AlertsView ── Bearer ──────────────────►  GET/POST /api/native/alerts
  Push       ── token ───────────────────►  POST/DELETE /api/native/push   ◄── pg_cron → APNs
  WebScreen  ── session form post ───────►  POST /api/native/web-login  (cookies for the web pages)
+            ── after each token refresh ──►  POST /api/native/web-login sync=1 (cookie re-sync, 204)
+ AuthStore  ── login events ────────────►  POST /api/native/auth-event  (native_auth_events)
  Lesson room (web page in WebScreen) ◄─ bridge ─► CallManager (native Daily client + screen share)
                                            POST /api/meeting/native-join, /api/meeting/state
 ```
@@ -55,3 +57,7 @@ Repository secrets: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`, `APPLE_TEAM_ID`
 `SUPABASE_PROJECT_HOST`, `SUPABASE_PUBLISHABLE_KEY`. Run the **TestFlight** workflow. Bundle ids
 `com.itaybraha.lugipod.teacher` and `….screen`, app group `group.com.itaybraha.lugipod`.
 Push also needs, on the server (Vercel), `APNS_KEY_P8`, `APNS_KEY_ID`, `APNS_TEAM_ID`.
+
+## Staying signed in
+
+Every login is a paid WhatsApp code. The session lives in `SessionVault` (the SDK's Keychain item, a file copy and memory); the app signs out only when the person presses התנתקות, the account is the wrong kind, or Supabase really rejected the session. See `docs/STAYING_SIGNED_IN.md` in the website repo (itay-braha/mitsmatschool) for the full design and the `native_auth_events` reports.

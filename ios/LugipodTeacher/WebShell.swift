@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import WebKit
 
@@ -46,11 +47,17 @@ struct WebShell: UIViewRepresentable {
         let call: CallManager
         weak var web: WKWebView?
         private let share = ShareLauncher()
+        private var tokenWatch: AnyCancellable?
 
         init(call: CallManager) {
             self.call = call
             super.init()
             call.onEvent = { [weak self] detail in self?.dispatch(detail) }
+            // After every token refresh, hand the fresh tokens to the page too (cookie only, no navigation): the page and the app share
+            // one login, and a copy two refreshes behind would make Supabase revoke it (see /api/native/web-login).
+            tokenWatch = AuthStore.shared.$tokenGeneration.dropFirst().sink { [weak self] _ in
+                Task { @MainActor in await self?.syncSession() }
+            }
         }
 
         func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -70,6 +77,16 @@ struct WebShell: UIViewRepresentable {
                      initiatedByFrame frame: WKFrameInfo, type: WKMediaCaptureType,
                      decisionHandler: @escaping (WKPermissionDecision) -> Void) {
             decisionHandler(.grant)
+        }
+
+        /// Rewrites the page's session cookie with the app's fresh tokens (POST /api/native/web-login with sync=1 → 204, no navigation).
+        @MainActor
+        private func syncSession() async {
+            guard let web, web.url?.host == API.baseURL.host,
+                  let tokens = try? await AuthStore.shared.sessionTokens(),
+                  let args = try? JSONSerialization.data(withJSONObject: [tokens.access, tokens.refresh]),
+                  let json = String(data: args, encoding: .utf8) else { return }
+            web.evaluateJavaScript(WebLogin.syncScript(json), completionHandler: nil)
         }
 
         private func dispatch(_ detail: [String: Any]) {
@@ -101,6 +118,17 @@ enum WebLogin {
         req.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         req.httpBody = formBody(["access_token": tokens.access, "refresh_token": tokens.refresh, "next": path])
         return req
+    }
+
+    /// JavaScript that re-sends [access, refresh] (a JSON array literal) to /api/native/web-login in sync mode from inside the page.
+    static func syncScript(_ tokensJSON: String) -> String {
+        """
+        (function (t) {
+          var f = new URLSearchParams();
+          f.set('access_token', t[0]); f.set('refresh_token', t[1]); f.set('sync', '1');
+          fetch('/api/native/web-login', { method: 'POST', body: f, credentials: 'same-origin' }).catch(function () {});
+        })(\(tokensJSON));
+        """
     }
 
     static func formBody(_ fields: [String: String]) -> Data {
